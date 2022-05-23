@@ -62,6 +62,7 @@ Finally, a directory containing `model.glb`, `textures` and `meta.json` is compr
   - Like sketchfab does
 
 ## TODO:
-- Create class to extend bpy.types.Collection with all the collection stuff we made
+- Allow user to set BQDMExporter.disp_size through IntProperty()
+  - Verify that it is a power of 2
 - Implement `mypy`
   - precommit hook?
