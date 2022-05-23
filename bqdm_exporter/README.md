@@ -62,4 +62,6 @@ Finally, a directory containing `model.glb`, `textures` and `meta.json` is compr
   - Like sketchfab does
 
 ## TODO:
+- Create class to extend bpy.types.Collection with all the collection stuff we made
 - Implement `mypy`
+  - precommit hook?
