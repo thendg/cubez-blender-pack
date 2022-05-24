@@ -13,7 +13,7 @@
 
 import bpy
 from bqdm_exporter.bqdm_exporter import BQDMExporter
-
+from bpy.types import Menu, TOPBAR_MT_file_export
 
 bl_info = {
     "name": "BQDM Exporter",
@@ -30,15 +30,28 @@ bl_info = {
 }
 
 
+# explaination of `caller` param https://blender.stackexchange.com/q/42907
+def menu_func_export(caller: Menu, _context: bpy.context):
+    """
+    Binds a button or trigger on a UILayout to the BQDMExporter's `invoke()` method.
+    Signature follows the requirements for this function to be passed as a draw function to a UI component.
+
+    :param caller: The object containing the layout.
+    :param _context: The calling context.
+    """
+
+    caller.layout.operator(BQDMExporter.bl_idname, text="BQDM (.bqdm)")
+
+
 def register():
     "Register the exporter class with Blender and an export option to the export menu"
 
     bpy.utils.register_class(BQDMExporter)
-    bpy.types.TOPBAR_MT_file_export.append(BQDMExporter.menu_func_export)
+    TOPBAR_MT_file_export.append(menu_func_export)
 
 
 def unregister():
     "Unregister the exporter class and remove the export option from the export menu"
 
     bpy.utils.unregister_class(BQDMExporter)
-    bpy.types.TOPBAR_MT_file_export.remove(BQDMExporter.menu_func_export)
+    TOPBAR_MT_file_export.remove(menu_func_export)
