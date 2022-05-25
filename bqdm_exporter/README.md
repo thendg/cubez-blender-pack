@@ -8,6 +8,8 @@ CG Artists spend hours designing delicate 3D scenes, only to render them into 2D
 Running in the non-destructive mode, will leave behind some unused datablocks generated during the export. These can be removed by "File > Cleanup > ...", *however*, this can remove **all** unused datablocks in from your `.blend` file, including unused datablocks that you created, so be sure that you won't lose anything you need.
 > *This is why the add-on doesn't perform the cleanup automatically.*
 
+Make sure all your textures use their objects' UV coordinate maps. When textures are baked, the resulting baked images will be applied to objects by their UV, so creating your textures around their UV maps ensures the most consistent and predicateble results. Note that these UV maps should be finalised too. Any modifiers that introduce geometry should already be applied, since they will affect the UV map. Ideally, you should apply these modifiers *before* UV unwrapping your objects.
+
 # Technical Specification
 ## Structure
 A single `.bdqm` file is a `gzip` archive consiting of the followng files:
@@ -62,7 +64,9 @@ Finally, a directory containing `model.glb`, `textures` and `meta.json` is compr
   - Like sketchfab does
 
 ## TODO:
-- Allow user to set BQDMExporter.disp_size through IntProperty()
-  - Verify that it is a power of 2
+- Should we use multires for objects.
+  - If we do, who is responsible for it, us or artist?
+  - If we do, it will affect baking and glTF exporting
 - Implement `mypy`
   - precommit hook?
+- Convert documentation to Google Style

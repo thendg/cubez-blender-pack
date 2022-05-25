@@ -32,7 +32,7 @@ def apply_suffix(s, suffix) -> str:
     Apply a suffix to a string.
 
     :param s: The string to suffix.
-    :para suffix: The suffix to apply.
+    :param suffix: The suffix to apply.
     """
 
     return f"{s}-{suffix}"
@@ -47,8 +47,7 @@ def search(
     :param current: The current node being searched.
     :param is_target: A predicate function that returns True when passed the desired element.
     :param gen: A function that returns the direct children of a node when passed a node. The children should be returned as an iterable. This function should not return indirect descendants.
-
-    Returns the target if it was found, `None` otherwise.
+    :returns: the target if it was found, `None` otherwise.
     """
 
     found = None
@@ -88,9 +87,7 @@ def get_node_of_type(tree: NodeTree, type: str) -> Optional[Node]:
 
     :param tree: The tree to search
     :param type: The node type to search for
-
-    Returns the first node in `tree` with the type `type`, or None if no nodes
-    with the given type could be found
+    :returns: the first node in `tree` with the type `type`, or None if no nodes with the given type could be found
     """
 
     for node in cast(Iterable[Node], tree.nodes):
@@ -160,6 +157,32 @@ def configure_cycles(
     # (3) Enable all desired devices
     for dev in devs:
         dev.use = True
+
+
+def get_link(node: Node, socket_name: str, output: bool = False) -> NodeLink:
+    """
+    Get the first link from a socket.
+
+    :param node: The node containing the socket.
+    :param socket_name: The name of the socket.
+    :param output: Should be True if the desired socket is an output socket, False otherwise
+    """
+    sockets = node.outputs if output else node.inputs
+    return sockets[socket_name].links[0]
+
+
+def find_shape_key_container(obj: Object) -> Optional[Key]:
+    """
+    Search `bpy.data.shape_keys` to find the Key object containing the Shape Keys for a given object
+
+    :param current: The object who's Shape Keys are being searched for.
+    :returns: the Key object if it was found, `None` otherwise.
+    """
+
+    for shape_key_container in cast(Iterable[Key], bpy.data.shape_keys):
+        if shape_key_container.user == obj.data:
+            return shape_key_container
+    return None
 
 
 class BQDMExporter(Operator):
@@ -246,9 +269,7 @@ class BQDMExporter(Operator):
                 )
 
             # Check Surface input for Material Output node
-            if not cast(list[NodeLink], output_node.inputs["Surface"].links)[
-                0
-            ].from_socket:
+            if not get_link(output_node, "Surface").from_socket:
                 return self.error(
                     f'Active material of the object "{obj.name}" has no surface input.'
                 )
@@ -344,16 +365,17 @@ class BQDMExporter(Operator):
             output_node = get_node_of_type(mat_tree, "OUTPUT_MATERIAL")
 
             # Get the socket currently providing the surface input for the material output
-            surface_src_socket = cast(
-                list[NodeLink], output_node.inputs["Surface"].links
-            )[0].from_socket
-            # Get the socket currently providing the displacement input for the material output
-            displacement_src_socket = cast(
-                list[NodeLink], output_node.inputs["Displacement"].links
-            )[0].from_socket
+            surface_socket = get_link(output_node, "Surface").from_socket
+            # Get the node currently providing the displacement input for the material output
+            displacement_link = get_link(output_node, "Displacement")
             # If there is no displacement source, there's no displacement so we don't have anything to bake
-            if not displacement_src_socket:
+            if not displacement_link.from_node or not displacement_link.from_socket:
                 continue
+            displacement_socket = displacement_link.from_socket
+            if displacement_link.from_node.type == "ShaderNodeDisplacement":
+                displacement_socket = get_link(
+                    displacement_link.from_node, "Height"
+                ).from_socket
 
             # Set current object to active object for bake
             context.active_object = obj  # view_layer.objects.active = obj
@@ -361,7 +383,7 @@ class BQDMExporter(Operator):
             # Create emission shader node
             emission: Node = mat_tree.nodes.new("ShaderNodeEmission")
             # Connect displacment source to the emission shader's color input
-            mat_tree.links.new(displacement_src_socket, emission.inputs["Color"])
+            mat_tree.links.new(displacement_socket, emission.inputs["Color"])
             # Connect emission shader's output to material output's surface input socket
             mat_tree.links.new(
                 emission.outputs["Emission"], output_node.inputs["Surface"]
@@ -373,6 +395,7 @@ class BQDMExporter(Operator):
                 self.disp_size_px,
                 self.disp_size_px,
                 float_buffer=True,
+                is_data=True,
             )
 
             # Create image texture
@@ -386,7 +409,12 @@ class BQDMExporter(Operator):
             mat_tree.nodes.active = img_node
             img_node.image = img
 
-            shape_key_container: Key = None
+            # Find the datablock containing this object's shape keys, if it doesn't exist can't be found, then the object has no shape keys
+            # so we'll create the Basis shape key manually
+            shape_key_container = find_shape_key_container(obj)
+            if not shape_key_container:
+                obj.shape_key_add("Basis")
+                shape_key_container = find_shape_key_container(obj)
 
             # Bake displacement maps for all frames in the timeline, apply them as Displace modifiers, then apply the modifers as shape keys to be keyframed
             for frame in range(context.scene.frame_start, context.scene.frame_end + 1):
@@ -409,12 +437,6 @@ class BQDMExporter(Operator):
                 bpy.ops.object.modifier_apply_as_shapekey(
                     keep_modifier=False, modifier=disp.name
                 )
-
-                # Find the `Key` datablock containing this object's shape keys if it has not already been found
-                if not shape_key_container:
-                    for shape_key_container in cast(Iterable[Key], bpy.data.shape_keys):
-                        if shape_key_container.user == obj.data:
-                            break
 
                 # Find the newly created shape key
                 shape_key: ShapeKey = None
@@ -443,11 +465,14 @@ class BQDMExporter(Operator):
             mat_tree.nodes.remove(emission)
             mat_tree.nodes.remove(img_node)
             # Put the original surface shader back as the surface input for the material output
-            mat_tree.links.new(surface_src_socket, output_node.inputs["Surface"])
+            mat_tree.links.new(surface_socket, output_node.inputs["Surface"])
 
         # Delete dispalcement map image/texture blend data (the saved render will get cleaned up later)
         bpy.data.images.remove(img)
         bpy.data.textures.remove(tex)
+
+        # TODO: export particles
+        # TODO: export aniamted particles?
 
         # TODO: uncommment
         # Export scene
