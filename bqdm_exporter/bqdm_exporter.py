@@ -6,6 +6,7 @@ import bpy
 from bpy.props import BoolProperty, EnumProperty, IntProperty, StringProperty
 from bpy.types import (
     Collection,
+    Context,
     DisplaceModifier,
     Event,
     Image,
@@ -97,7 +98,7 @@ def get_node_of_type(tree: NodeTree, type: str) -> Optional[Node]:
 
 
 def configure_cycles(
-    context: bpy.context = bpy.context,
+    context: Context = bpy.context,
     mode: str = "GPU",
     feature_set: str = "SUPPORTED",
     device_type="CUDA",
@@ -285,7 +286,7 @@ class BQDMExporter(Operator):
         self.report({"ERROR"}, message)
         return {"CANCELLED"}
 
-    def invoke(self, context: bpy.context, _event: Event) -> set[str]:
+    def invoke(self, context: Context, _event: Event) -> set[str]:
         """
         Invoke the operator. This method is called before `execute()`, so can be used to setup initialise the operator by setting up
         it's feilds before `execute()` is run.
@@ -310,7 +311,7 @@ class BQDMExporter(Operator):
         context.window_manager.fileselect_add(self)
         return {"RUNNING_MODAL"}
 
-    def execute(self, context: bpy.context) -> set[str]:
+    def execute(self, context: Context) -> set[str]:
         """
         Execute the operator's business logic.
 
