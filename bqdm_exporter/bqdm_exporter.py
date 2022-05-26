@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Callable, Iterable, Optional, TypeVar, cast
+from typing import Any, Callable, Iterable, Optional, TypeVar, cast
 
 import bpy
 from bpy.props import BoolProperty, EnumProperty, IntProperty, StringProperty
@@ -30,15 +30,15 @@ from cycles.properties import CyclesPreferences, CyclesRenderSettings
 T = TypeVar("T")
 
 
-def apply_suffix(s, suffix) -> str:
+def apply_suffix(s: Any, suffix: Any) -> str:
     """
-    Apply a suffix to a string.
+    Apply a suffix to a string. Arguments are casted to their string form.
 
     :param s: The string to suffix.
     :param suffix: The suffix to apply.
     """
 
-    return f"{s}-{suffix}"
+    return f"{str(s)}-{str(suffix)}"
 
 
 def search(
@@ -118,8 +118,10 @@ def configure_cycles(
     :param samples: Toggle denoising.
     """
 
+    # Activate Cycles rendering engine
     context.scene.render.engine = "CYCLES"
 
+    # Configure Cycles rendering engine
     cycles_settings: CyclesRenderSettings = context.scene.cycles
     cycles_settings.samples = samples
     cycles_settings.use_denoising = denoise
@@ -140,7 +142,9 @@ def configure_cycles(
     else:
         cycles_prefs.compute_device_type = device_type
 
-    # After steps (1), (2), and (3), all GPU CUDA rendering devices should be enabled and all non-GPU rendering devices should be disabled.
+    #########################################
+    # Enable only desired rendering devices #
+    #########################################
 
     # (1) Disable all rendering devices
     for device in cycles_prefs.devices:
@@ -336,15 +340,16 @@ class BQDMExporter(Operator):
 
         # Create workspace collection for non-descructive workflow
         if not self.destructive:
-            parent_coll = search(
-                context.scene.collection,
-                lambda coll: collection.name in coll.children,
-                lambda coll: coll.children,
-            )
             workspace_coll = bpy.data.collections.new(self.NAME_SUFFIX)
             copy_collection(collection, workspace_coll, suffix=self.NAME_SUFFIX)
             collection = workspace_coll
-            parent_coll.children.link(collection)
+            # Link workspace collection to parent collection of target collection so workspace collection
+            # and target collection are siblings
+            search(
+                context.scene.collection,
+                lambda coll: collection.name in coll.children,
+                lambda coll: coll.children,
+            ).children.link(collection)
 
         # Set target collection to active collection (export uses active collection)
         target_layer_coll = search(
@@ -354,34 +359,49 @@ class BQDMExporter(Operator):
         )
         context.view_layer.active_layer_collection = target_layer_coll
 
-        # Bake procedural displacement of all meshes in target collection
+        ###################################################################
+        # Bake procedural displacement of all meshes in target collection #
+        ###################################################################
+
+        # Configure baking settings
         configure_cycles(samples=1, denoise=False)
         context.scene.render.image_settings.file_format = "OPEN_EXR"
         context.scene.render.image_settings.color_depth = 32
+
         for obj in cast(Iterable[Object], collection.all_objects):
             if not obj.type == "MESH":
                 continue
 
-            # Get node tree of active material
+            #############################################
+            # Inspect active material of current object #
+            #############################################
+
             mat_tree = obj.active_material.node_tree
-            # Get material output node of active material
             output_node = get_node_of_type(mat_tree, "OUTPUT_MATERIAL")
 
-            # Get the socket currently providing the surface input for the material output
+            # Get the socket providing the surface input for the material output
             surface_socket = get_link(output_node, "Surface").from_socket
-            # Get the node currently providing the displacement input for the material output
+            # Get the node providing the displacement input for the material output
             displacement_link = get_link(output_node, "Displacement")
-            # If there is no displacement source, there's no displacement so we don't have anything to bake
+            # If there is no displacement source, there's no displacement so we don't have anything to bake for this stage
             if not displacement_link.from_node or not displacement_link.from_socket:
                 continue
+            # Get the socket providing the displacement input for the material output
             displacement_socket = displacement_link.from_socket
+            # If the displacement source node is a displacement node, backtrack to the Height input for the displacement source
+            # because displacement output is not going to give us the right output for baking a displacement map (we need a greyscale image).
             if displacement_link.from_node.type == "ShaderNodeDisplacement":
                 displacement_socket = get_link(
                     displacement_link.from_node, "Height"
                 ).from_socket
 
             # Set current object to active object for bake
-            context.active_object = obj  # view_layer.objects.active = obj
+            # TODO: might have to be: view_layer.objects.active = obj
+            context.active_object = obj
+
+            ###############################
+            # Prepare material for baking #
+            ###############################
 
             # Create emission shader node
             emission: Node = mat_tree.nodes.new("ShaderNodeEmission")
@@ -391,6 +411,10 @@ class BQDMExporter(Operator):
             mat_tree.links.new(
                 emission.outputs["Emission"], output_node.inputs["Surface"]
             )
+
+            ###########################
+            # Create baking resources #
+            ###########################
 
             # Create bake image
             img: Image = bpy.data.images.new(
@@ -405,7 +429,7 @@ class BQDMExporter(Operator):
             tex: ImageTexture = bpy.data.textures.new(self.DISP_BAKE_NAME, type="IMAGE")
             tex.image = img
 
-            # Create image texture node for to set the created image as the bake target
+            # Create image texture node to set the created image as the bake target
             img_node: ShaderNodeTexImage = mat_tree.nodes.new("ShaderNodeTexImage")
             img_node.name = self.DISP_BAKE_NAME
             img_node.select = True
@@ -419,7 +443,10 @@ class BQDMExporter(Operator):
                 obj.shape_key_add("Basis")
                 shape_key_container = find_shape_key_container(obj)
 
-            # Bake displacement maps for all frames in the timeline, apply them as Displace modifiers, then apply the modifers as shape keys to be keyframed
+            ####################################################################
+            # Bake and apply displacement maps for all frames in the timeline, #
+            ####################################################################
+
             for frame in range(context.scene.frame_start, context.scene.frame_end + 1):
                 # Bake displacement map for current frame
                 context.scene.frame_set(frame)
@@ -449,7 +476,8 @@ class BQDMExporter(Operator):
                     if shape_key.name == disp.name:
                         break
 
-                # "when keying data paths which contain nested properties this must be done from the `ID` subclass" - https://docs.blender.org/api/current/bpy.types.bpy_struct.html#bpy.types.bpy_struct.keyframe_insert
+                # "when keying data paths which contain nested properties this must be done from the `ID` subclass"
+                # - https://docs.blender.org/api/current/bpy.types.bpy_struct.html#bpy.types.bpy_struct.keyframe_insert
                 data_path = f'key_blocks["{shape_key.name}"].value'
 
                 # Animate Shape Key
@@ -474,28 +502,49 @@ class BQDMExporter(Operator):
         bpy.data.images.remove(img)
         bpy.data.textures.remove(tex)
 
-        # Export particles
+        ############################################
+        # Bake particles as aniamted mesh instaces #
+        ############################################
+
         depsgraph = context.evaluated_depsgraph_get()
         instance_target = None  # TODO: how to set instance target??
 
+        # Iterate all objects to get all active particle systems
         for obj in cast(Iterable[Object], context.scene.objects):
+            # Create collection for baked particles of this object
+            obj_particles_coll = bpy.data.collections.new(
+                name=apply_suffix(obj.name, "PS")
+            )
+            # Link new collection to parent collection of object so obj and new collection are siblings
+            search(
+                context.scene.collection,
+                lambda coll: obj.name in coll.objects,
+                lambda coll: coll.children,
+            ).children.link(obj_particles_coll)
             obj_eval = depsgraph.objects[obj.name]
-            for ps in cast(Iterable[ParticleSystem], obj_eval.particle_systems):
-                instances: list[Object] = []
-                particles_coll = bpy.data.collections.new(name="particles")
-                context.scene.collection.children.link(particles_coll)
 
-                # Instance the particle target object for every particle in the particle system.
-                for i, _ in enumerate(
-                    ps.particles.values() + ps.child_particles.values()
+            # Iterate all particle systems on object
+            for i, ps in enumerate(
+                cast(Iterable[ParticleSystem], obj_eval.particle_systems)
+            ):
+                # Create collection for baked particles of this particle system
+                ps_coll = bpy.data.collections.new(
+                    name=apply_suffix(obj_particles_coll.name, str(i).zfill(3))
+                )
+                obj_particles_coll.children.link(ps_coll)
+
+                # Create instances of the particle target object for every particle in the particle system.
+                instances: list[Object] = []
+                for i, _ in cast(
+                    Iterable[Particle], ps.particles.extend(ps.child_particles)
                 ):
                     dup = bpy.data.objects.new(
                         name=str(i).zfill(5), object_data=instance_target.data
                     )
-                    particles_coll.objects.link(dup)
+                    ps_coll.objects.link(dup)
                     instances.append(dup)
 
-                # Match and keyframe the instances to the states of their corresponding particles for every frame in the timeline
+                # Match and keyframe the states instances to the states of their corresponding particles for every frame in the timeline
                 for frame in range(
                     context.scene.frame_start, context.scene.frame_end + 1
                 ):
