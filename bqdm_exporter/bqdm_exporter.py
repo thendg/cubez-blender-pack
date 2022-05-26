@@ -18,6 +18,8 @@ from bpy.types import (
     NodeTree,
     Object,
     Operator,
+    Particle,
+    ParticleSystem,
     ShaderNodeTexImage,
     ShapeKey,
 )
@@ -472,8 +474,49 @@ class BQDMExporter(Operator):
         bpy.data.images.remove(img)
         bpy.data.textures.remove(tex)
 
-        # TODO: export particles
-        # TODO: export aniamted particles?
+        # Export particles
+        depsgraph = context.evaluated_depsgraph_get()
+        instance_target = None  # TODO: how to set instance target??
+
+        for obj in cast(Iterable[Object], context.scene.objects):
+            obj_eval = depsgraph.objects[obj.name]
+            for ps in cast(Iterable[ParticleSystem], obj_eval.particle_systems):
+                instances: list[Object] = []
+                particles_coll = bpy.data.collections.new(name="particles")
+                context.scene.collection.children.link(particles_coll)
+
+                # Instance the particle target object for every particle in the particle system.
+                for i, _ in enumerate(
+                    ps.particles.values() + ps.child_particles.values()
+                ):
+                    dup = bpy.data.objects.new(
+                        name=str(i).zfill(5), object_data=instance_target.data
+                    )
+                    particles_coll.objects.link(dup)
+                    instances.append(dup)
+
+                # Match and keyframe the instances to the states of their corresponding particles for every frame in the timeline
+                for frame in range(
+                    context.scene.frame_start, context.scene.frame_end + 1
+                ):
+                    context.scene.frame_set(frame)
+                    for p, instance in cast(
+                        tuple[tuple[Particle, Object]], zip(ps.particles, instances)
+                    ):
+                        alive = p.alive_state == "ALIVE"
+                        if alive:
+                            instance.scale = (p.size, p.size, p.size)
+                        else:
+                            instance.scale = (0.001, 0.001, 0.001)
+                        instance.hide_viewport = not alive
+                        instance.location = p.location
+                        # Set rotation mode to quaternion to match particle rotation
+                        instance.rotation_mode = "QUATERNION"
+                        instance.rotation_quaternion = p.rotation
+
+                        instance.keyframe_insert("location")
+                        instance.keyframe_insert("rotation_quaternion")
+                        instance.keyframe_insert("scale")
 
         # TODO: uncommment
         # Export scene
