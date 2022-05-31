@@ -1,4 +1,4 @@
-import os
+import tempfile
 from typing import Iterable, cast
 
 import bpy
@@ -85,14 +85,14 @@ class DisplacementBaker(Operator):
         context.scene.render.image_settings.color_depth = 32
 
         # Get target object
-        obj = context.active_object
+        obj = context.view_layer.objects.active
         if self.keep_original:
             parent_collection = utils.search(
-                context.scene,
+                context.scene.collection,
                 lambda coll: obj.name in coll.objects,
-                lambda coll: coll.objects,
+                lambda coll: coll.children,
             )
-            obj_dup = obj.copy()
+            obj_dup: Object = obj.copy()
             obj_dup.data = obj.data.copy()
             parent_collection.objects.link(obj_dup)
             obj = obj_dup
@@ -122,10 +122,6 @@ class DisplacementBaker(Operator):
             displacement_socket = utils.get_link(
                 displacement_link.from_node, "Height"
             ).from_socket
-
-        # Set current object to active object for bake
-        # TODO: might have to be: view_layer.objects.active = obj
-        context.active_object = obj
 
         ###############################
         # Prepare material for baking #
@@ -173,46 +169,49 @@ class DisplacementBaker(Operator):
         # Bake and apply displacement maps for all frames in the timeline #
         ###################################################################
 
-        for frame in range(context.scene.frame_start, context.scene.frame_end + 1):
-            # Bake displacement map for current frame
-            context.scene.frame_set(frame)
-            bpy.ops.object.bake(type="EMIT", save_mode="EXTERNAL")
-            img.save_render(
-                filepath=self.resolve(self.TEMP_DIR, "baked.exr")
-            )  # TODO: use temp dir
+        with tempfile.NamedTemporaryFile() as img_file:
+            for frame in range(context.scene.frame_start, context.scene.frame_end + 1):
+                # Bake displacement map for current frame
+                context.scene.frame_set(frame)
+                bpy.ops.object.bake(type="EMIT", save_mode="EXTERNAL")
+                img.save_render(filepath=img_file.name)
 
-            # Create and configure Displace modifier
-            disp: DisplaceModifier = obj.modifiers.new(
-                utils.apply_suffix("Displace", self.NAME_SUFFIX), type="DISPLACE"
-            )
-            disp.space = "LOCAL"
-            disp.texture_coords = "UV"
-            disp.direction = "RGB_TO_XYZ"
-            disp.texture = tex
-            disp.is_active = True
+                # Create and configure Displace modifier
+                disp: DisplaceModifier = obj.modifiers.new("Displace", "DISPLACE")
+                disp.space = "LOCAL"
+                disp.texture_coords = "UV"
+                disp.direction = "RGB_TO_XYZ"
+                disp.texture = tex
+                disp.is_active = True
 
-            # Apply modifier as Shape Key
-            bpy.ops.object.modifier_apply_as_shapekey(
-                keep_modifier=False, modifier=disp.name
-            )
+                # Apply modifier as Shape Key
+                bpy.ops.object.modifier_apply_as_shapekey(
+                    keep_modifier=False, modifier=disp.name
+                )
 
-            # Find the newly created shape key
-            shape_key: ShapeKey = None
-            for shape_key in cast(Iterable[ShapeKey], shape_key_container.key_blocks):
-                if shape_key.name == disp.name:
-                    break
+                # Find the newly created shape key
+                shape_key: ShapeKey = None
+                for shape_key in cast(
+                    Iterable[ShapeKey], shape_key_container.key_blocks
+                ):
+                    if shape_key.name == disp.name:
+                        break
 
-            # "when keying data paths which contain nested properties this must be done from the `ID` subclass"
-            # - https://docs.blender.org/api/current/bpy.types.bpy_struct.html#bpy.types.bpy_struct.keyframe_insert
-            data_path = f'key_blocks["{shape_key.name}"].value'
+                # "when keying data paths which contain nested properties this must be done from the `ID` subclass"
+                # - https://docs.blender.org/api/current/bpy.types.bpy_struct.html#bpy.types.bpy_struct.keyframe_insert
+                data_path = f'key_blocks["{shape_key.name}"].value'
 
-            # Animate Shape Key
-            shape_key.value = 0.0
-            shape_key_container.keyframe_insert(data_path=data_path, frame=frame - 1)
-            shape_key.value = 1.0
-            shape_key_container.keyframe_insert(data_path=data_path, frame=frame)
-            shape_key.value = 0.0
-            shape_key_container.keyframe_insert(data_path=data_path, frame=frame + 1)
+                # Animate Shape Key
+                shape_key.value = 0.0
+                shape_key_container.keyframe_insert(
+                    data_path=data_path, frame=frame - 1
+                )
+                shape_key.value = 1.0
+                shape_key_container.keyframe_insert(data_path=data_path, frame=frame)
+                shape_key.value = 0.0
+                shape_key_container.keyframe_insert(
+                    data_path=data_path, frame=frame + 1
+                )
 
         # Remove extra material nodes
         mat_tree.nodes.remove(emission)
