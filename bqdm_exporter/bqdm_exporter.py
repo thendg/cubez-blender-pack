@@ -3,7 +3,7 @@ import shutil
 from typing import Iterable, cast
 
 import bpy
-from bpy.props import BoolProperty, EnumProperty, StringProperty
+from bpy.props import EnumProperty, StringProperty
 from bpy.types import Collection, Context, Event, Mesh, Object, Operator
 
 from .. import utils
@@ -14,7 +14,6 @@ class BQDMExporter(Operator):
 
     bl_idname = "export_scene.bqdm"
     bl_label = "Export BQDM"
-    NAME_SUFFIX = "BQDMEW"  # BQDM Exporter Workspace
     TEMP_DIR = "temp"
     path: str
 
@@ -27,10 +26,6 @@ class BQDMExporter(Operator):
             for collection in cast(Iterable[Collection], bpy.data.collections)
         ],
     )
-    destructive: BoolProperty(
-        name="Destructive",
-        description="Operate destructively and apply the computed bakes (material and geometric) to the export objects",
-    )
 
     def resolve(self, *paths: str) -> str:
         """
@@ -42,47 +37,6 @@ class BQDMExporter(Operator):
         """
 
         return os.path.join(self.path, *paths)
-
-    def validate_collection(self, collection: Collection) -> set[str]:
-        """
-        Validate a collection in preperation for a BQDM export. The collection is considered invalid if:
-        - An object within the collection has no UV map
-        - An object within the collection has no active material
-        - The active material of an object within the collection has no Material Output node
-        - The active material of an object within the collection has an empty Surface input for it's Material Output node
-
-        :param collection: The collection to validate.
-
-        Calls `self.error()` if the collection is deemed invalid and returns that result.
-        If the collection is valid, None is returned.
-        """
-        for obj in cast(Iterable[Object], collection.all_objects):
-            if not obj.type == "MESH":
-                continue
-
-            # Check UV Map
-            mesh: Mesh = obj.data
-            if not mesh.uv_layers:
-                return self.error(f'Mesh "{mesh.name}" has no UV map.')
-
-            # Check active material
-            if not obj.active_material:
-                return self.error(f'Object "{obj.name}" has no active material.')
-
-            mat_tree = obj.active_material.node_tree
-            output_node = utils.get_node_of_type(mat_tree, "OUTPUT_MATERIAL")
-
-            # Check Material Output node
-            if not output_node:
-                return self.error(
-                    f'Active material of the object "{obj.name}" has no Material Output node.'
-                )
-
-            # Check Surface input for Material Output node
-            if not utils.get_link(output_node, "Surface").from_socket:
-                return self.error(
-                    f'Active material of the object "{obj.name}" has no surface input.'
-                )
 
     def error(self, message="Operation failed.") -> set[str]:
         """
@@ -114,6 +68,40 @@ class BQDMExporter(Operator):
             blend_filepath = os.path.splitext(blend_filepath)[0]
         self.path = blend_filepath
 
+        ##################################
+        # Validate the target collection #
+        ##################################
+        for obj in cast(
+            Iterable[Object],
+            bpy.data.collections.get(self.target_coll_name).all_objects,
+        ):
+            if not obj.type == "MESH":
+                continue
+
+            # Check UV Map
+            mesh: Mesh = obj.data
+            if not mesh.uv_layers:
+                return self.error(f'Mesh "{mesh.name}" has no UV map.')
+
+            # Check active material
+            if not obj.active_material:
+                return self.error(f'Object "{obj.name}" has no active material.')
+
+            mat_tree = obj.active_material.node_tree
+            output_node = utils.get_node_of_type(mat_tree, "OUTPUT_MATERIAL")
+
+            # Check Material Output node
+            if not output_node:
+                return self.error(
+                    f'Active material of the object "{obj.name}" has no Material Output node.'
+                )
+
+            # Check Surface input for Material Output node
+            if not utils.get_link(output_node, "Surface").from_socket:
+                return self.error(
+                    f'Active material of the object "{obj.name}" has no surface input.'
+                )
+
         context.window_manager.fileselect_add(self)
         return {"RUNNING_MODAL"}
 
@@ -132,24 +120,7 @@ class BQDMExporter(Operator):
         os.mkdir(self.path)
         os.mkdir(self.resolve(self.TEMP_DIR))
 
-        # Get and validate target collection
         collection = bpy.data.collections.get(self.target_coll_name)
-        validation_state = self.validate_collection(collection)
-        if validation_state:
-            return validation_state
-
-        # Create workspace collection for non-descructive workflow
-        if not self.destructive:
-            workspace_coll = bpy.data.collections.new(self.NAME_SUFFIX)
-            utils.copy_collection(collection, workspace_coll, suffix=self.NAME_SUFFIX)
-            collection = workspace_coll
-            # Link workspace collection to parent collection of target collection so workspace collection
-            # and target collection are siblings
-            utils.search(
-                context.scene.collection,
-                lambda coll: collection.name in coll.children,
-                lambda coll: coll.children,
-            ).children.link(collection)
 
         # Set target collection to active collection (export uses active collection)
         target_layer_coll = utils.search(
@@ -174,12 +145,5 @@ class BQDMExporter(Operator):
 
         # Delete temporary working directory
         shutil.rmtree(self.resolve(self.TEMP_DIR))
-
-        # Cleanup workspace collection if working in non-destructive mode
-        if not self.destructive:
-            for obj in cast(Iterable[Object], collection.all_objects):
-                if obj.users == 1:
-                    bpy.data.objects.remove(obj)
-            bpy.data.collections.remove(collection, do_unlink=True)
 
         return {"FINISHED"}
