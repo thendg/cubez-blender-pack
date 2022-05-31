@@ -12,21 +12,21 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
-from bqdm_exporter.bqdm_exporter import BQDMExporter
+from .bqdm_exporter import BQDMExporter
 from bpy.types import Menu, TOPBAR_MT_file_export
 
 bl_info = {
     "name": "BQDM Exporter",
     "description": "Export scenes in the BQDM format",
     "author": "NOIR Development Group",
-    "version": (1, 0, 0),
+    "version": (1, 0, 0),  # ALPHA
     "blender": (3, 1, 0),
-    "location": "File > Export",
+    # "location": "File > Export",
     "warning": "",  # used for warning users of bug or problems with the addon. shows up in the addons panel
     "doc_url": "",  # TODO: populate
     "tracker_url": "",  # TODO: populate
     "support": "COMMUNITY",
-    "category": "Export",
+    "category": "Import-Export",
 }
 
 

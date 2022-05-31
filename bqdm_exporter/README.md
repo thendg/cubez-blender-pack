@@ -64,9 +64,13 @@ Finally, a directory containing `model.glb`, `textures` and `meta.json` is compr
   - Like sketchfab does
 
 ## TODO:
+- Write surface bakery
 - Should we use multires for objects.
   - If we do, who is responsible for it, us or artist?
   - If we do, it will affect baking and glTF exporting
 - Implement `mypy`
   - precommit hook?
 - Convert documentation to Google Style
+- When converting particles, viewport settings are used - not render. To get render level conversions, viewport settings will need to match render settings.
+  - https://blender.stackexchange.com/questions/21623/how-can-you-change-the-curve-resolution-of-hair-particles
+  - Children
