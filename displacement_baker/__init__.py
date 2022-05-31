@@ -11,9 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from typing import Callable
+
 import bpy
-from .displacement_baker import BQDMExporter
-from bpy.types import Menu, TOPBAR_MT_file_export
+from bpy.types import Context, Menu, TOPBAR_MT_file_export
+
+from .. import utils
+from .displacement_baker import DisplacementBaker
 
 bl_info = {
     "name": "BQDM Exporter",
@@ -29,29 +33,20 @@ bl_info = {
     "category": "Import-Export",
 }
 
-
-# explaination of `caller` param https://blender.stackexchange.com/q/42907
-def menu_func_export(caller: Menu, _context: bpy.context):
-    """
-    Binds a button or trigger on a UILayout to the BQDMExporter's `invoke()` method.
-    Signature follows the requirements for this function to be passed as a draw function to a UI component.
-
-    :param caller: The object containing the layout.
-    :param _context: The calling context.
-    """
-
-    caller.layout.operator(BQDMExporter.bl_idname, text="BQDM (.bqdm)")
+mfe: Callable[[Menu, Context], None] = lambda caller, _context: utils.menu_func_export(
+    caller, DisplacementBaker.bl_idname, text="BQDM (.bqdm)"
+)
 
 
 def register():
     "Register the exporter class with Blender and an export option to the export menu"
 
-    bpy.utils.register_class(BQDMExporter)
-    TOPBAR_MT_file_export.append(menu_func_export)
+    bpy.utils.register_class(DisplacementBaker)
+    TOPBAR_MT_file_export.append(mfe)
 
 
 def unregister():
     "Unregister the exporter class and remove the export option from the export menu"
 
-    bpy.utils.unregister_class(BQDMExporter)
-    TOPBAR_MT_file_export.remove(menu_func_export)
+    bpy.utils.unregister_class(DisplacementBaker)
+    TOPBAR_MT_file_export.remove(mfe)
