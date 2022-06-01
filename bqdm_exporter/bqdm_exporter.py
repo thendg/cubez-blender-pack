@@ -2,18 +2,21 @@ import os
 import shutil
 from typing import Iterable, cast
 
+import bl_ui
 import bpy
 from bpy.props import EnumProperty, StringProperty
-from bpy.types import Collection, Context, Event, Mesh, Object, Operator
+from bpy.types import Collection, Context, Event, Mesh, Object
 
 from .. import utils
+from ..types import CubezOperator
 
 
-class BQDMExporter(Operator):
+class BQDMExporter(CubezOperator):
     """Export a collection as a Baked Quasi-Dynamic Model."""
 
     bl_idname = "export_scene.bqdm"
     bl_label = "Export BQDM"
+    menu_target = bl_ui.space_topbar.TOPBAR_MT_file_export
     TEMP_DIR = "temp"
     path: str
 
@@ -38,29 +41,10 @@ class BQDMExporter(Operator):
 
         return os.path.join(self.path, *paths)
 
-    def error(self, message="Operation failed.") -> set[str]:
-        """
-        Report an error to Blender.
-        Returns `{"CANCELLED"}`, so the return value of this function can be returned out of the operator.
-
-        :param message: The error message to report.
-        """
-
-        self.report({"ERROR"}, message)
-        return {"CANCELLED"}
-
     def invoke(self, context: Context, _event: Event) -> set[str]:
-        """
-        Invoke the operator. This method is called before `execute()`, so can be used to setup initialise the operator by setting up
-        it's feilds before `execute()` is run.
-
-        :param context: The context in which the operator was invoked.
-        :param event: The window event created when the operator was invoked.
-
-        Returns `{"FINISHED"}` if the export completed successfully, {"CANCELLED"} otherwise.
-        """
-
-        # Set self.path
+        #################
+        # Set self.path #
+        #################
         blend_filepath = context.blend_data.filepath
         if not blend_filepath:
             blend_filepath = "untitled"
@@ -106,14 +90,6 @@ class BQDMExporter(Operator):
         return {"RUNNING_MODAL"}
 
     def execute(self, context: Context) -> set[str]:
-        """
-        Execute the operator's business logic.
-
-        :param context: The context in which the operator was executed.
-
-        Returns `{"FINISHED"}` if the export completed successfully, `{"CANCELLED"}` otherwise.
-        """
-
         # Setup output directory
         if os.path.exists(self.path):
             shutil.rmtree(self.path)

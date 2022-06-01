@@ -11,23 +11,23 @@ from bpy.types import (
     ImageTexture,
     Node,
     Object,
-    Operator,
     ShaderNodeTexImage,
     ShapeKey,
 )
 
 from .. import utils
+from ..types import CubezOperator
 
 
-class DisplacementBaker(Operator):
+class DisplacementBaker(CubezOperator):
     """Bake the procedural displacement of an object into animated shape keys."""
 
     bl_idname = "export_scene.bqdm"  # TODO: update
     bl_label = "Bake Procedural Displacement"  # TODO: update
+    menu_target = None  # TODO: update
     DISP_BAKE_NAME = "DISP_BAKE"
     disp_size_px: int
 
-    # TODO: change to "keep original"
     keep_original: BoolProperty(
         name="Keep Original",
         description="Keep the original object.",
@@ -45,40 +45,11 @@ class DisplacementBaker(Operator):
         default="9",
     )
 
-    def error(self, message="Operation failed.") -> set[str]:
-        """
-        Report an error to Blender.
-        Returns `{"CANCELLED"}`, so the return value of this function can be returned out of the operator.
-
-        :param message: The error message to report.
-        """
-
-        self.report({"ERROR"}, message)
-        return {"CANCELLED"}
-
     def invoke(self, context: Context, _event: Event) -> set[str]:
-        """
-        Invoke the operator. This method is called before `execute()`, so can be used to setup initialise the operator by setting up
-        it's feilds before `execute()` is run.
-
-        :param context: The context in which the operator was invoked.
-        :param event: The window event created when the operator was invoked.
-
-        Returns `{"FINISHED"}` if the export completed successfully, {"CANCELLED"} otherwise.
-        """
-
         self.disp_size_px = pow(2, int(self.disp_size))
         return {"RUNNING_MODAL"}
 
     def execute(self, context: Context) -> set[str]:
-        """
-        Execute the operator's business logic.
-
-        :param context: The context in which the operator was executed.
-
-        Returns `{"FINISHED"}` if the export completed successfully, `{"CANCELLED"}` otherwise.
-        """
-
         # Configure baking settings
         utils.configure_cycles(samples=1, denoise=False)
         context.scene.render.image_settings.file_format = "OPEN_EXR"

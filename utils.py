@@ -169,17 +169,3 @@ def find_shape_key_container(obj: Object) -> Optional[Key]:
         if shape_key_container.user == obj.data:
             return shape_key_container
     return None
-
-
-# explaination of `caller` param https://blender.stackexchange.com/q/42907
-def menu_func_export(caller: Menu, idname: str, text: str = ""):
-    """
-    Binds a button or trigger on a UILayout to the relevant class' `invoke()` method.
-    Signature follows the requirements for this function to be passed as a draw function to a UI component.
-
-    :param caller: The object containing the layout.
-    :param idname: The bl_idname of the class to register.
-    :param text: The text to display in UI.
-    """
-
-    caller.layout.operator(idname, text=text)
