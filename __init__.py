@@ -5,7 +5,7 @@ from bpy.types import Context, Menu
 
 from .bqdm_exporter import BQDMExporter
 from .displacement_baker import DisplacementBaker
-from .types import CubezOperator
+from .cubez_operator import CubezOperator
 
 bl_info = {
     "name": "Cubez Blender Pack",

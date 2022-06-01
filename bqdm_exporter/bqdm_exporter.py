@@ -2,16 +2,15 @@ import os
 import shutil
 from typing import Iterable, cast
 
-import bl_ui
 import bpy
+import bl_ui
 from bpy.props import EnumProperty, StringProperty
 from bpy.types import Collection, Context, Event, Mesh, Object
 
 from .. import utils
-from ..types import CubezOperator
 
 
-class BQDMExporter(CubezOperator):
+class BQDMExporter(utils.CubezOperator):
     """Export a collection as a Baked Quasi-Dynamic Model."""
 
     bl_idname = "export_scene.bqdm"

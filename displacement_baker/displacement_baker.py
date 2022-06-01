@@ -16,10 +16,9 @@ from bpy.types import (
 )
 
 from .. import utils
-from ..types import CubezOperator
 
 
-class DisplacementBaker(CubezOperator):
+class DisplacementBaker(utils.CubezOperator):
     """Bake the procedural displacement of an object into animated shape keys."""
 
     bl_idname = "export_scene.bqdm"  # TODO: update
