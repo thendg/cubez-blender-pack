@@ -67,12 +67,13 @@ if __name__ == "__main__":
     bundle(
         parser.get("include").split(","),
         exclude=parser.get("exclude").split(","),
+        overwrite=parser.getf("overwrite"),
         src=parser.get("src"),
         output=output,
         arcname=arcname,
     )
 
-    if parser.get("build"):
+    if parser.getf("build"):
         print(f'Built to "{os.path.join(output, arcname)}".')
     else:
         ######################################

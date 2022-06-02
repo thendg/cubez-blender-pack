@@ -5,9 +5,8 @@ import sys
 from argparser import Argparser
 
 if __name__ == "__main__":
-    parser = Argparser(opts=["blender"])
+    parser = Argparser(opts=["blender", "file"])
     parser.parse(sys.argv)
-
     args = [
         parser.get("blender"),
         "--python",
@@ -26,5 +25,9 @@ if __name__ == "__main__":
         "--overwrite",
         "--build",
     ]
+
+    if parser.get("file"):
+        args.insert(1, parser.get("file"))
+
     print(args)
     subprocess.run(args)
