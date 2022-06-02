@@ -5,20 +5,9 @@ from bpy.types import Context, Menu
 
 from .bqdm_exporter import BQDMExporter
 from .displacement_baker import DisplacementBaker
-from .cubez_operator import CubezOperator
+from .utils import CubezOperator
 
-bl_info = {
-    "name": "Cubez Blender Pack",
-    "description": "A collection of helpers designed by the Cubez.io team for development in blender",
-    "author": "NOIR Development Group",
-    "version": (1, 0, 0),  # ALPHA
-    "blender": (3, 1, 0),
-    "warning": "",  # used for warning users of bug or problems with the addon. shows up in the addons panel
-    "doc_url": "",  # TODO: populate
-    "tracker_url": "",  # TODO: populate
-    "support": "COMMUNITY",
-}
-
+bl_info = utils.bl_info()
 classes: list[Type[CubezOperator]] = [BQDMExporter, DisplacementBaker]
 
 

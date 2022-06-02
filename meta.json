@@ -1,0 +1,8 @@
+{
+    "name": "Cubez Blender Pack",
+    "description": "A collection of helpers designed by the Cubez.io team for development in blender",
+    "author": "NOIR Development Group",
+    "version": [1, 0, 0],
+    "blender": [3, 1, 0],
+    "support": "COMMUNITY"
+}
