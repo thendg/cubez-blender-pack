@@ -1,2 +1,2 @@
-from cbp_operator import CBPOperator
-from registerable import Registerable
+from .cbp_operator import CBPOperator
+from .registerable import Registerable

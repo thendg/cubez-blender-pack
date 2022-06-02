@@ -1,10 +1,9 @@
-from abc import ABC
 from typing import Optional, Type
 
 import bpy_types
 
 
-class Registerable(ABC):
+class Registerable:
     """
     A base class defining some properties used for class registration in with Blender's Python interface
     """
