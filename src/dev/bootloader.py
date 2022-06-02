@@ -8,6 +8,17 @@ sys.path += [os.path.abspath(os.path.dirname(__file__))]
 from argparser import Argparser
 
 
+def get_build_path(output: str, arcname: str) -> str:
+    """
+    Construct a build path from an ouput folder path and archive name.
+
+    :param ouptut: The output folder path.
+    :param arcname: The archive name
+    """
+
+    return os.path.join(output, f"{arcname}.zip")
+
+
 def bundle(
     include: list[str],
     exclude: list[str] = [],
@@ -30,7 +41,7 @@ def bundle(
     os.chdir(src)
 
     # Delete old bundle
-    build_path = os.path.join(output, f"{arcname}.zip")
+    build_path = get_build_path(output, arcname)
     if os.path.exists(build_path):
         if not overwrite:
             return
@@ -52,6 +63,8 @@ def bundle(
 
 
 if __name__ == "__main__":
+    print("BOOTLOADING")
+
     ################
     # Bundle addon #
     ################
@@ -63,6 +76,7 @@ if __name__ == "__main__":
     parser.parse(sys.argv)
     output = os.path.abspath(parser.get("output"))
     arcname = parser.get("arcname")
+    build_path = get_build_path(output, arcname)
 
     bundle(
         parser.get("include").split(","),
@@ -72,7 +86,7 @@ if __name__ == "__main__":
         output=output,
         arcname=arcname,
     )
-    print(f'Built bundle to "{os.path.join(output, arcname)}".')
+    print(f'Bundle built to "{build_path}".')
 
     if not parser.getf("build"):
         ######################################
@@ -91,7 +105,7 @@ if __name__ == "__main__":
         except:
             pass
 
-        bpy.ops.preferences.addon_install(filepath=os.path.join(output, arcname))
+        bpy.ops.preferences.addon_install(filepath=build_path)
         bpy.ops.preferences.addon_enable(module=arcname)
 
         print("\n############ LOAD SUCCESSFUL ############")
