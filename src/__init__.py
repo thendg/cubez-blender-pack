@@ -4,7 +4,7 @@ import bpy
 from bpy.types import Context, Menu
 
 from .bqdm_exporter import BQDMExporter
-from .utils.wrappers import CubezOperator
+from .utils.wrappers import Registerable
 
 # addon metadata
 bl_info = {
@@ -19,9 +19,9 @@ bl_info = {
     "support": "COMMUNITY",
 }
 # operator subclasses to register
-classes: list[Type[CubezOperator]] = [BQDMExporter]
+classes: list[Type[Registerable]] = [BQDMExporter]
 # dictionary of operators to their draw functions
-menu_funcs: dict[Type[CubezOperator], Callable[[Menu, Context], None]] = {}
+menu_funcs: dict[Type[Registerable], Callable[[Menu, Context], None]] = {}
 
 
 def register():

@@ -1,1 +1,2 @@
-from .cubez_operator import CubezOperator
+from cbp_operator import CBPOperator
+from registerable import Registerable

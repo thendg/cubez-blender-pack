@@ -1,13 +1,10 @@
-from typing import Optional, Type
-
 from bpy.types import Context, Event, Operator
-import bpy_types
 
 
-class CubezOperator(Operator):
-    bl_idname: str
-    bl_label: str
-    menu_target: Optional[Type[bpy_types.Menu]] = None
+class CBPOperator(Operator):
+    """
+    A wrapper for `bpy.types.Operator` with some added helper methods and better docstrings/typing.
+    """
 
     def error(self, message="Operation failed.") -> set[str]:
         """
@@ -23,14 +20,15 @@ class CubezOperator(Operator):
     def invoke(self, context: Context, event: Event) -> set[str]:
         """
         Invoke the operator. This method is called before `execute()`, so can be used to setup initialise the operator by setting up
-        it's feilds before `execute()` is run.
+        it's fields before `execute()` is run. `invoke()` should not execute any Blender operations, so that it can be quit from cleanly
+        with the assurance that the blend file was not affected.
 
         :param context: The context in which the operator was invoked.
         :param event: The window event created when the operator was invoked.
 
         Returns `{"FINISHED"}` if the export completed successfully, {"CANCELLED"} otherwise.
         """
-        pass
+        return {"FINISHED"}
 
     def execute(self, context: Context) -> set[str]:
         """
@@ -40,4 +38,4 @@ class CubezOperator(Operator):
 
         Returns `{"FINISHED"}` if the export completed successfully, `{"CANCELLED"}` otherwise.
         """
-        pass
+        return {"FINISHED"}

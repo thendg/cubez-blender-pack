@@ -7,14 +7,14 @@ import bpy
 from ..utils import blender_utils, common_utils
 from bpy.props import EnumProperty, StringProperty
 from bpy.types import Collection, Context, Event, Mesh, Object
-from ..utils.wrappers import CubezOperator
+from ..utils.wrappers import CBPOperator, Registerable
 
 
-class BQDMExporter(CubezOperator):
+class BQDMExporter(CBPOperator, Registerable):
     """Export a collection as a Baked Quasi-Dynamic Model."""
 
-    bl_idname = "export_scene.bqdm"
     bl_label = "Export BQDM"
+    bl_idname = "export_scene.bqdm"
     menu_target = bl_ui.space_topbar.TOPBAR_MT_file_export
     TEMP_DIR = "temp"
     path: str
@@ -121,6 +121,12 @@ class BQDMExporter(CubezOperator):
         ##################
         # Bake materials #
         ##################
+
+        # Configure baking settings
+        blender_utils.configure_cycles(context=context, mode="HYBRID")
+        context.scene.render.image_settings.file_format = "JPEG"
+        context.scene.render.image_settings.color_depth = 32
+
         for obj in cast(Iterable[Object], collection.all_objects):
             pass
 

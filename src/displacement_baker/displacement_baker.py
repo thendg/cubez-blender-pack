@@ -11,19 +11,19 @@ from bpy.types import (
     ImageTexture,
     Node,
     Object,
+    Panel,
     ShaderNodeTexImage,
     ShapeKey,
 )
 
-from utils.wrappers import CubezOperator
+from utils.wrappers import Registerable
 
 
-class DisplacementBaker(CubezOperator):
+class DisplacementBaker(Panel, Registerable):
     """Bake the procedural displacement of an object into animated shape keys."""
 
-    bl_idname = "export_scene.bqdm"  # TODO: update
-    bl_label = "Bake Procedural Displacement"  # TODO: update
-    menu_target = None  # TODO: update
+    bl_label = "Bake Procedural Displacement"
+    bl_idname = "PT_DisplacementBaker"
     DISP_BAKE_NAME = "DISP_BAKE"
     disp_size_px: int
 
