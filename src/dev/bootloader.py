@@ -10,22 +10,28 @@ def bundle(
     include: list[str],
     exclude: list[str] = [],
     overwrite: bool = True,
+    src: str = ".",
     output: str = ".",
 ) -> None:
     """
     Bundle the source files of this repository into a zip archive.
 
     :param include: A list of file extensions to include in the archive. Should not include the `.` prefix.
-    :param exclude: A list of filenames to exclude from the archive. (Can be glob pattern but do not include the `!**/` prefix)
+    :param exclude: A list of filenames to exclude from the archive realtive to the source folder. (Can be glob pattern but do not include the `!**/` prefix)
     :param overwrite: Should be `True` if the function should overwrite an exist bundle, `False` otherwise.
+    :param src: The path to the source code.
     :param output: The path to build the bundle to.
     """
+
+    os.chdir(src)
 
     # Delete old bundle
     if os.path.exists(output):
         if not overwrite:
             return
         os.remove(output)
+    else:
+        os.makedirs(os.path.dirname(output), exist_ok=True)
 
     # Get excluded files
     excluded = []
@@ -51,7 +57,7 @@ if __name__ == "__main__":
         f"{ARCHIVE_NAME}.zip",
     )
 
-    bundle(["py"], exclude=["dev/*"], output=build_path)
+    bundle(["py"], exclude=["dev/*"], src=sys.argv[-1], output=build_path)
 
     if "--build" in sys.argv:
         print(f'Built to "{build_path}".')

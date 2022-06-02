@@ -1,5 +1,5 @@
 # Development Scripts
-> *NOTE:* These scripts should be run from the root directory of the project, **not** from `./dev`.
+> *NOTE:* These scripts should be run from the root directory of the project, **not** from `./src` or `./src/dev`. *This is because the placement of Python's `cwd` determines the placement of the `build` directory.*
 
 ## `launch.py`
 This script can be run to execute blender with the "Cubez Blender Pack" addon installed, updated and activated. The script takes one command line argument: a path pointing to the location of your target Blender installation.
