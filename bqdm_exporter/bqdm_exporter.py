@@ -8,9 +8,10 @@ from bpy.props import EnumProperty, StringProperty
 from bpy.types import Collection, Context, Event, Mesh, Object
 
 from .. import utils
+from utils.wrappers import CubezOperator
 
 
-class BQDMExporter(utils.CubezOperator):
+class BQDMExporter(CubezOperator):
     """Export a collection as a Baked Quasi-Dynamic Model."""
 
     bl_idname = "export_scene.bqdm"
@@ -117,6 +118,12 @@ class BQDMExporter(utils.CubezOperator):
             export_apply=True,
             export_animations=True,
         )
+
+        ##################
+        # Bake materials #
+        ##################
+        for obj in cast(Iterable[Object], collection.all_objects):
+            pass
 
         # Delete temporary working directory
         shutil.rmtree(self.resolve(self.TEMP_DIR))

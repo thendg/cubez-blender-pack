@@ -4,7 +4,7 @@ import bpy
 from bpy.types import Context, Menu
 
 from .bqdm_exporter import BQDMExporter
-from .utils import CubezOperator
+from .utils.wrappers import CubezOperator
 
 # addon metadata
 bl_info = {
