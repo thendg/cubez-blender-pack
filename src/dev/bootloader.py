@@ -3,6 +3,8 @@ import os
 import sys
 from zipfile import ZipFile
 
+sys.path += [os.path.abspath(os.path.dirname(__file__))]
+
 from argparser import Argparser
 
 

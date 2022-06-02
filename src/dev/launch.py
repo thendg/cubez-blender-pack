@@ -13,7 +13,18 @@ if __name__ == "__main__":
         "--python",
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "bootloader.py"),
         "--",
-        "./src",
+        "--include",
+        "py",
+        "--exclude",
+        "dev/*",
+        "--src",
+        "src",
+        "--output",
+        "build",
+        "--arcname",
+        "cubez-blender-pack",
+        "--overwrite",
+        "--build",
     ]
     print(args)
     subprocess.run(args)
