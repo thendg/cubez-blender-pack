@@ -1,10 +1,15 @@
+import os
 import subprocess
 import sys
-import os
+
+from argparser import Argparser
 
 if __name__ == "__main__":
+    parser = Argparser(opts=["blender"])
+    parser.parse(sys.argv)
+
     args = [
-        sys.argv[-1],
+        parser.get("blender"),
         "--python",
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "bootloader.py"),
         "--",

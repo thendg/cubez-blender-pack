@@ -3,7 +3,7 @@ import os
 import sys
 from zipfile import ZipFile
 
-ARCHIVE_NAME = "cubez-blender-pack"
+from argparser import Argparser
 
 
 def bundle(
@@ -12,6 +12,7 @@ def bundle(
     overwrite: bool = True,
     src: str = ".",
     output: str = ".",
+    arcname: str = ".",
 ) -> None:
     """
     Bundle the source files of this repository into a zip archive.
@@ -20,18 +21,20 @@ def bundle(
     :param exclude: A list of filenames to exclude from the archive realtive to the source folder. (Can be glob pattern but do not include the `!**/` prefix)
     :param overwrite: Should be `True` if the function should overwrite an exist bundle, `False` otherwise.
     :param src: The path to the source code.
-    :param output: The path to build the bundle to.
+    :param output: The directory to build the bundle to.
+    :param arcname: The name of the bundle.
     """
 
     os.chdir(src)
 
     # Delete old bundle
-    if os.path.exists(output):
+    build_path = os.path.join(output, f"{arcname}.zip")
+    if os.path.exists(build_path):
         if not overwrite:
             return
-        os.remove(output)
+        os.remove(build_path)
     else:
-        os.makedirs(os.path.dirname(output), exist_ok=True)
+        os.makedirs(output, exist_ok=True)
 
     # Get excluded files
     excluded = []
@@ -39,11 +42,11 @@ def bundle(
         excluded += glob.glob(f"**/{e}", recursive=True)
 
     # Create archive
-    with ZipFile(output, "w") as archive:
+    with ZipFile(build_path, "w") as bundle:
         for ext in include:
             for file in glob.glob(f"**/*.{ext}", recursive=True):
                 if file not in excluded:
-                    archive.write(file, arcname=os.path.join(ARCHIVE_NAME, file))
+                    bundle.write(file, arcname=os.path.join(arcname, file))
 
 
 if __name__ == "__main__":
@@ -51,16 +54,24 @@ if __name__ == "__main__":
     # Bundle addon #
     ################
 
-    build_path = os.path.join(
-        os.getcwd(),
-        "build",
-        f"{ARCHIVE_NAME}.zip",
+    parser = Argparser(
+        opts=["include", "exclude", "src", "output", "arcname"],
+        flags=["overwrite", "build"],
+    )
+    parser.parse(sys.argv)
+    output = os.path.abspath(parser.get("output"))
+    arcname = parser.get("arcname")
+
+    bundle(
+        parser.get("include").split(","),
+        exclude=parser.get("exclude").split(","),
+        src=parser.get("src"),
+        output=output,
+        arcname=arcname,
     )
 
-    bundle(["py"], exclude=["dev/*"], src=sys.argv[-1], output=build_path)
-
-    if "--build" in sys.argv:
-        print(f'Built to "{build_path}".')
+    if parser.get("build"):
+        print(f'Built to "{os.path.join(output, arcname)}".')
     else:
         ######################################
         # Update and enable addon in Blender #
@@ -73,12 +84,12 @@ if __name__ == "__main__":
         try:
             # We have to use addon_remove() because calling addon_install(overwrite=True) doesn't
             # delete old files from the addon, so we have to delete the whole addon and reinstall
-            bpy.ops.preferences.addon_disable(module=ARCHIVE_NAME)
-            bpy.ops.preferences.addon_remove(module=ARCHIVE_NAME)
+            bpy.ops.preferences.addon_disable(module=arcname)
+            bpy.ops.preferences.addon_remove(module=arcname)
         except:
             pass
 
-        bpy.ops.preferences.addon_install(filepath=build_path)
-        bpy.ops.preferences.addon_enable(module=ARCHIVE_NAME)
+        bpy.ops.preferences.addon_install(filepath=os.path.join(output, arcname))
+        bpy.ops.preferences.addon_enable(module=arcname)
 
         print("\n############ LOAD SUCCESSFUL ############")
