@@ -71,6 +71,8 @@ if __name__ == "__main__":
             bpy.ops.preferences.addon_remove(module=ARCHIVE_NAME)
         except:
             pass
+
         bpy.ops.preferences.addon_install(filepath=build_path)
         bpy.ops.preferences.addon_enable(module=ARCHIVE_NAME)
+
         print("\n############ LOAD SUCCESSFUL ############")
