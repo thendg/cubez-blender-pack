@@ -1,10 +1,9 @@
 from typing import Callable, Type
+import bpy
 
 from bpy.types import Context, Menu, Operator
 
-# The relative import implicitly registers the import classes too - equivalent to using bpy.utils.[register/unregister]_class
 from .bqdm_exporter import BQDMExporter
-from .displacement_baker import DisplacementBaker
 from .utils import CubezOperator
 
 bl_info = {
@@ -18,7 +17,7 @@ bl_info = {
     "tracker_url": "https://github.com/thendg/cubez-packages/issues",
     "support": "COMMUNITY",
 }
-classes: list[Type[CubezOperator]] = [BQDMExporter, DisplacementBaker]
+classes: list[Type[CubezOperator]] = [BQDMExporter]
 
 
 def get_menu_func(cls: Type[Operator]) -> Callable[[Menu, Context], None]:
@@ -36,12 +35,15 @@ def get_menu_func(cls: Type[Operator]) -> Callable[[Menu, Context], None]:
 def register():
     "Append classes to their associated menus."
     for cls in [cls for cls in classes if cls.menu_target]:
+        print("RUN")
+        bpy.utils.register_class(cls)
         cls.menu_target.append(get_menu_func(cls))
 
 
 def unregister():
     "Remove classes from their associated menus."
     for cls in [cls for cls in classes if cls.menu_target]:
+        bpy.utils.unregister_class(cls)
         cls.menu_target.remove(get_menu_func(cls))
 
 

@@ -67,9 +67,10 @@ if __name__ == "__main__":
         try:
             # We have to use addon_remove() because calling addon_install(overwrite=True) doesn't
             # delete old files from the addon, so we have to delete the whole addon and reinstall
+            bpy.ops.preferences.addon_disable(module=ARCHIVE_NAME)
             bpy.ops.preferences.addon_remove(module=ARCHIVE_NAME)
         except:
             pass
         bpy.ops.preferences.addon_install(filepath=build_path)
         bpy.ops.preferences.addon_enable(module=ARCHIVE_NAME)
-        print("\nLOAD SUCCESSFUL")
+        print("\n############ LOAD SUCCESSFUL ############")
