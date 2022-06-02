@@ -3,7 +3,7 @@ import os
 import sys
 from zipfile import ZipFile
 
-ARCHIVE_NAME = "CubezBlenderPack"
+ARCHIVE_NAME = "cubez-blender-pack"
 
 
 def bundle(

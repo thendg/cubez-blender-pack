@@ -13,6 +13,7 @@ bl_info = {
     "author": "NOIR Development Group",
     "version": (1, 0, 0),
     "blender": (3, 1, 0),
+    "warning": "This is an alpha version of the Cubez Blender Pack",
     "doc_url": "https://github.com/thendg/cubez-packages#readme",
     "tracker_url": "https://github.com/thendg/cubez-packages/issues",
     "support": "COMMUNITY",
