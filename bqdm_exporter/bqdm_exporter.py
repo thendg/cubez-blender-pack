@@ -4,10 +4,10 @@ from typing import Iterable, cast
 
 import bl_ui
 import bpy
-import utils
+from ..utils import blender_utils, common_utils
 from bpy.props import EnumProperty, StringProperty
 from bpy.types import Collection, Context, Event, Mesh, Object
-from utils.wrappers import CubezOperator
+from ..utils.wrappers import CubezOperator
 
 
 class BQDMExporter(CubezOperator):
@@ -71,7 +71,7 @@ class BQDMExporter(CubezOperator):
                 return self.error(f'Object "{obj.name}" has no active material.')
 
             mat_tree = obj.active_material.node_tree
-            output_node = utils.blender.get_node_of_type(mat_tree, "OUTPUT_MATERIAL")
+            output_node = blender_utils.get_node_of_type(mat_tree, "OUTPUT_MATERIAL")
 
             # Check Material Output node
             if not output_node:
@@ -80,7 +80,7 @@ class BQDMExporter(CubezOperator):
                 )
 
             # Check Surface input for Material Output node
-            if not utils.blender.get_link(output_node, "Surface").from_socket:
+            if not blender_utils.get_link(output_node, "Surface").from_socket:
                 return self.error(
                     f'Active material of the object "{obj.name}" has no surface input.'
                 )
@@ -98,7 +98,7 @@ class BQDMExporter(CubezOperator):
         collection = bpy.data.collections.get(self.target_coll_name)
 
         # Set target collection to active collection (export uses active collection)
-        target_layer_coll = utils.helpers.search(
+        target_layer_coll = common_utils.search(
             context.view_layer.layer_collection,
             lambda layer_coll: layer_coll.name == collection.name,
             lambda layer_coll: layer_coll.children,
