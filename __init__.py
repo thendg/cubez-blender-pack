@@ -7,7 +7,16 @@ from .bqdm_exporter import BQDMExporter
 from .displacement_baker import DisplacementBaker
 from .utils import CubezOperator
 
-bl_info = utils.bl_info()
+bl_info = {
+    "name": "Cubez Blender Pack",
+    "description": "A collection of helpers designed by the Cubez.io team for development in Blender",
+    "author": "NOIR Development Group",
+    "version": (1, 0, 0),
+    "blender": (3, 1, 0),
+    "doc_url": "https://github.com/thendg/cubez-packages#readme",
+    "tracker_url": "https://github.com/thendg/cubez-packages/issues",
+    "support": "COMMUNITY",
+}
 classes: list[Type[CubezOperator]] = [BQDMExporter, DisplacementBaker]
 
 

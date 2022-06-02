@@ -1,5 +1,4 @@
 import glob
-import json
 import os
 import sys
 from zipfile import ZipFile
@@ -45,12 +44,12 @@ if __name__ == "__main__":
         f"{ARCHIVE_NAME}.zip",
     )
 
-    bundle(["py", "json"], exclude=["dev/*", ".vscode/*"], output=build_path)
+    bundle(["py"], exclude=["dev/*"], output=build_path)
     if "--build" in sys.argv:
         print(f'Built to "{build_path}".')
     else:
         import bpy
 
+        bpy.ops.preferences.addon_remove(module=ARCHIVE_NAME)
         bpy.ops.preferences.addon_install(filepath=build_path)
-        with open("meta.json") as meta:
-            bpy.ops.preferences.addon_enable(json.load(meta)["name"])
+        bpy.ops.preferences.addon_enable(module=ARCHIVE_NAME)

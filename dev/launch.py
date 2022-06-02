@@ -2,9 +2,11 @@ import subprocess
 import sys
 import os
 
-# TODO: make launcher work
-
 if __name__ == "__main__":
-    args = [sys.argv[0], "--python", os.path.abspath("bootloader.py")]
+    args = [
+        sys.argv[-1],
+        "--python",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "bootloader.py"),
+    ]
     print(args)
     subprocess.run(args)
