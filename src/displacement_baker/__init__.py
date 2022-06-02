@@ -1,1 +1,1 @@
-from .displacement_baker import DisplacementBaker
+from .panel import DisplacementBakerPanel
