@@ -3,8 +3,9 @@ import bpy
 
 from bpy.types import Context, Menu
 
-from .bqdm_exporter import BQDMExporter
-from .utils.wrappers import Registerable
+from bqdm_exporter import BQDMExporter
+from displacement_baker import DisplacementBaker
+from utils.wrappers import Registerable
 
 # addon metadata
 bl_info = {
@@ -19,7 +20,7 @@ bl_info = {
     "support": "COMMUNITY",
 }
 # operator subclasses to register
-classes: list[Type[Registerable]] = [BQDMExporter]
+classes: list[Type[Registerable]] = [BQDMExporter, DisplacementBaker]
 # dictionary of operators to their draw functions
 menu_funcs: dict[Type[Registerable], Callable[[Menu, Context], None]] = {}
 
@@ -27,20 +28,22 @@ menu_funcs: dict[Type[Registerable], Callable[[Menu, Context], None]] = {}
 def register():
     "Register classes and append them to their associated menus."
 
-    for cls in [cls for cls in classes if cls.menu_target]:
+    for cls in classes:
         bpy.utils.register_class(cls)
-        menu_funcs[cls] = lambda caller, _context: caller.layout.operator(
-            cls.bl_idname, text=cls.bl_label
-        )
-        cls.menu_target.append(menu_funcs[cls])
+        if cls.menu_target:
+            menu_funcs[cls] = lambda caller, _context: caller.layout.operator(
+                cls.bl_idname, text=cls.bl_label
+            )
+            cls.menu_target.append(menu_funcs[cls])
 
 
 def unregister():
     "Unregister classes and remove them from their associated menus."
 
-    for cls in [cls for cls in classes if cls.menu_target]:
+    for cls in classes:
         bpy.utils.unregister_class(cls)
-        cls.menu_target.remove(menu_funcs[cls])
+        if cls.menu_target:
+            cls.menu_target.remove(menu_funcs[cls])
 
 
 if __name__ == "__main__":

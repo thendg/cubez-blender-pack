@@ -23,7 +23,6 @@ if __name__ == "__main__":
         "--arcname",
         "cubez-blender-pack",
         "--overwrite",
-        "--build",
     ]
 
     if parser.get("file"):

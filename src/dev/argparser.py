@@ -28,13 +28,13 @@ class Argparser:
     def parse(self, args: list[str]) -> None:
         """
         Parse the given argument list.
-        
+
         :param args: The list of arguments to parse.
         """
         i = 0
         while i < len(args):
             name = re.sub(Argparser.OPT, "", args[i])
-            if name in self.opts.keys() and self.opts[name] == False:
+            if name in self.opts.keys() and self.opts[name] == str(False):
                 self.opts[name] = str(True)
             elif name in self.opts.keys():
                 self.opts[name] = args[i + 1]

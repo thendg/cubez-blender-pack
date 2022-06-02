@@ -72,10 +72,9 @@ if __name__ == "__main__":
         output=output,
         arcname=arcname,
     )
+    print(f'Built bundle to "{os.path.join(output, arcname)}".')
 
-    if parser.getf("build"):
-        print(f'Built to "{os.path.join(output, arcname)}".')
-    else:
+    if not parser.getf("build"):
         ######################################
         # Update and enable addon in Blender #
         ######################################
