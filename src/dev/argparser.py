@@ -54,4 +54,4 @@ class Argparser:
         Get a boolean representing the value associated with a registered flag.
         :param flag: The name of the flag.
         """
-        return bool(self.opts.get(flag))
+        return self.get(flag) == str(True)
