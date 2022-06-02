@@ -4,7 +4,7 @@ import bpy
 from bpy.types import Context, Menu
 
 from .bqdm_exporter import BQDMExporter
-from .displacement_baker import DisplacementBakerPanel
+from .displacement_baker import DisplacementBakerOperator, DisplacementBakerPanel
 from .utils.wrappers import Registerable
 
 # addon metadata
@@ -20,7 +20,11 @@ bl_info = {
     "support": "COMMUNITY",
 }
 # operator subclasses to register
-CLASSES: list[Type[Registerable]] = [BQDMExporter, DisplacementBakerPanel]
+CLASSES: list[Type[Registerable]] = [
+    BQDMExporter,
+    DisplacementBakerOperator,
+    DisplacementBakerPanel,
+]
 # dictionary of operators to their draw functions
 menu_funcs: dict[Type[Registerable], Callable[[Menu, Context], None]] = {}
 

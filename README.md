@@ -2,6 +2,7 @@
 A collection of packages developed by the NOIR Development Group for Cubez.io
 
 ## TODO
+- [ ] Finish writing READMEs
 - [ ] Write particle converter (`./particle_converter`)
   - [ ] Emission
   - [ ] Hair
