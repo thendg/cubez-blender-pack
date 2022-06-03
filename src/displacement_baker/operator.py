@@ -23,7 +23,7 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
     """Bake the procedural displacement of an object into animated shape keys."""
 
     bl_label = "Bake Procedural Displacement"
-    bl_idname = "ops.object.bake_procedural_displacement"
+    bl_idname = "object.bake_procedural_displacement"
     DISP_BAKE_NAME = "DISP_BAKE"
     disp_size_px: int
 
@@ -43,6 +43,10 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         ],
         default="9",
     )
+
+    @classmethod
+    def poll(cls, context: Context):
+        return context.view_layer.objects.active.mode == "OBJECT"
 
     def invoke(self, context: Context, _event: Event) -> set[str]:
         self.disp_size_px = pow(2, int(self.disp_size))
