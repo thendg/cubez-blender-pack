@@ -114,7 +114,7 @@ def configure_cycles(
         dev.use = True
 
 
-def get_link(node: Node, socket_name: str, output: bool = False) -> NodeLink:
+def get_link(node: Node, socket_name: str, output: bool = False) -> Optional[NodeLink]:
     """
     Get the first link from a socket.
 
@@ -123,7 +123,11 @@ def get_link(node: Node, socket_name: str, output: bool = False) -> NodeLink:
     :param output: Should be True if the desired socket is an output socket, False otherwise
     """
     sockets = node.outputs if output else node.inputs
-    return sockets[socket_name].links[0]
+    links: tuple[NodeLink] = sockets[socket_name].links
+    if links:
+        return links[0]
+    else:
+        return None
 
 
 def find_shape_key_container(obj: Object) -> Optional[Key]:

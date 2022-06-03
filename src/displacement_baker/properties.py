@@ -13,8 +13,7 @@ class DisplacementBakerProperties(PropertyGroup, Registerable):
     bl_idname = "displacement_baker_properties"
 
     keep_original: BoolProperty(
-        name="Keep Original",
-        description="Keep the original object.",
+        name="Keep Original", description="Keep the original object.", default=True
     )
     disp_size: EnumProperty(
         name="Displacement Map Size",

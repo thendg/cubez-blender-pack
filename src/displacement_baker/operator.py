@@ -8,6 +8,7 @@ from bpy.types import (
     Event,
     Image,
     ImageTexture,
+    MaterialSlot,
     Node,
     Object,
     ShaderNodeTexImage,
@@ -25,30 +26,45 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
     bl_label = "Bake Procedural Displacement"
     bl_idname = "object.bake_procedural_displacement"
     DISP_BAKE_NAME = "DISP_BAKE"
-    keep_original: bool
-    disp_size: int
 
     @classmethod
     def poll(cls, context: Context):
-        return context.view_layer.objects.active.mode == "OBJECT"
+        obj = context.view_layer.objects.active
+        return obj.mode == "OBJECT" and obj.type == "MESH"
 
-    def invoke(self, context: Context, _event: Event) -> set[str]:
+    def invoke(self, context: Context, event: Event) -> set[str]:
+        mat_tree = context.view_layer.objects.active.active_material.node_tree
+        output_node = blender_utils.get_node_of_type(mat_tree, "OUTPUT_MATERIAL")
+
+        # If there is no displacement source, there's no displacement so we don't have anything to bake
+        if not blender_utils.get_link(output_node, "Displacement"):
+            self.report(
+                {"WARNING"},
+                "Operation cancelled because active object has no displacement source in active material.",
+            )
+            return {"CANCELLED"}
+
+        return self.execute(context)
+
+    def execute(self, context: Context) -> set[str]:
+        # Read operator properties
         props: DisplacementBakerProperties = getattr(
             context.scene, DisplacementBakerProperties.bl_idname
         )
-        self.keep_original = props.keep_original
-        self.disp_size = pow(2, int(props.disp_size))
-        return {"RUNNING_MODAL"}
+        keep_original: bool = props.keep_original
+        disp_size: int = pow(2, int(props.disp_size))
 
-    def execute(self, context: Context) -> set[str]:
         # Configure baking settings
-        blender_utils.configure_cycles(samples=1, denoise=False)
+        blender_utils.configure_cycles(context=context, samples=1, denoise=False)
         context.scene.render.image_settings.file_format = "OPEN_EXR"
-        context.scene.render.image_settings.color_depth = 32
+        context.scene.render.image_settings.color_depth = "32"
 
         # Get target object
         obj = context.view_layer.objects.active
-        if self.keep_original:
+
+        # Duplicate object if working non-destructively
+        if keep_original:
+            # TODO: rename duplicate with self.DISP_BAKE_NAME
             parent_collection = common_utils.search(
                 context.scene.collection,
                 lambda coll: obj.name in coll.objects,
@@ -56,11 +72,15 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
             )
             obj_dup: Object = obj.copy()
             obj_dup.data = obj.data.copy()
+            for mat_slot in cast(Iterable[MaterialSlot], obj.material_slots):
+                obj_dup.material_slots[
+                    mat_slot.name
+                ].material = mat_slot.material.copy()
+            obj.hide_set(True)
             parent_collection.objects.link(obj_dup)
+            context.view_layer.objects.active = obj_dup
+            obj_dup.select_set(True)
             obj = obj_dup
-
-        if not obj.type == "MESH":
-            return {"FINISHED"}
 
         #############################################
         # Inspect active material of current object #
@@ -73,14 +93,11 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         surface_socket = blender_utils.get_link(output_node, "Surface").from_socket
         # Get the node providing the displacement input for the material output
         displacement_link = blender_utils.get_link(output_node, "Displacement")
-        # If there is no displacement source, there's no displacement so we don't have anything to bake for this stage
-        if not displacement_link.from_node or not displacement_link.from_socket:
-            return {"FINISHED"}
         # Get the socket providing the displacement input for the material output
         displacement_socket = displacement_link.from_socket
         # If the displacement source node is a displacement node, backtrack to the Height input for the displacement source
         # because displacement output is not going to give us the right output for baking a displacement map (we need a greyscale image).
-        if displacement_link.from_node.type == "ShaderNodeDisplacement":
+        if displacement_link.from_node.type == "DISPLACEMENT":
             displacement_socket = blender_utils.get_link(
                 displacement_link.from_node, "Height"
             ).from_socket
@@ -103,8 +120,8 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         # Create bake image
         img: Image = bpy.data.images.new(
             self.DISP_BAKE_NAME,
-            self.disp_size,
-            self.disp_size,
+            disp_size,
+            disp_size,
             float_buffer=True,
             is_data=True,
         )
@@ -119,12 +136,13 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         img_node.select = True
         mat_tree.nodes.active = img_node
         img_node.image = img
+        # TODO: should it be non-color?
 
         # Find the datablock containing this object's shape keys, if it doesn't exist can't be found, then the object has no shape keys
         # so we'll create the Basis shape key manually
         shape_key_container = blender_utils.find_shape_key_container(obj)
         if not shape_key_container:
-            obj.shape_key_add("Basis")
+            obj.shape_key_add(name="Basis")
             shape_key_container = blender_utils.find_shape_key_container(obj)
 
         ###################################################################
@@ -132,6 +150,7 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         ###################################################################
 
         with tempfile.NamedTemporaryFile() as img_file:
+            print(img_file.name)  # TODO: remove
             for frame in range(context.scene.frame_start, context.scene.frame_end + 1):
                 # Bake displacement map for current frame
                 context.scene.frame_set(frame)

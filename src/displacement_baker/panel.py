@@ -16,11 +16,6 @@ class DisplacementBakerPanel(Panel, Registerable):
     bl_region_type = "UI"
     bl_category = "CBP"
 
-    @classmethod
-    def poll(cls, context: Context):
-        if context.view_layer.objects.active.mode == "OBJECT":
-            return True
-
     def draw(self, context: Context):
         props = getattr(context.scene, DisplacementBakerProperties.bl_idname)
         col = self.layout.column()
