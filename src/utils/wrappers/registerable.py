@@ -5,7 +5,7 @@ import bpy_types
 
 class Registerable:
     """
-    A base class defining some properties used for class registration in with Blender's Python interface
+    A base class defining some attributes used for class registration in with Blender's Python interface
     """
 
     bl_label: str

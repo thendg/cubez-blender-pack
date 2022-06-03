@@ -2,7 +2,6 @@ import tempfile
 from typing import Iterable, cast
 
 import bpy
-from bpy.props import BoolProperty, EnumProperty
 from bpy.types import (
     Context,
     DisplaceModifier,
@@ -17,6 +16,7 @@ from bpy.types import (
 
 from ..utils.wrappers import CBPOperator, Registerable
 from ..utils import blender_utils, common_utils
+from .properties import DisplacementBakerProperties
 
 
 class DisplacementBakerOperator(CBPOperator, Registerable):
@@ -25,31 +25,19 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
     bl_label = "Bake Procedural Displacement"
     bl_idname = "object.bake_procedural_displacement"
     DISP_BAKE_NAME = "DISP_BAKE"
-    disp_size_px: int
-
-    keep_original: BoolProperty(
-        name="Keep Original",
-        description="Keep the original object.",
-    )
-    disp_size: EnumProperty(
-        name="Displacement Map Size",
-        description="The size (in pixels) of intermediate displacement maps for prodedural displacement baking",
-        items=[
-            ("9", "512px x 512px", "Use small displacement map textures"),
-            ("10", "1024px x 1024px", "Use 1k displacement map textures"),
-            ("11", "2048px x 2048px", "Use 2k displacement map textures"),
-            ("12", "4096px x 4096px", "Use 3k displacement map textures"),
-            ("13", "8192px x 8192px", "Use 8k displacement map textures"),
-        ],
-        default="9",
-    )
+    keep_original: bool
+    disp_size: int
 
     @classmethod
     def poll(cls, context: Context):
         return context.view_layer.objects.active.mode == "OBJECT"
 
     def invoke(self, context: Context, _event: Event) -> set[str]:
-        self.disp_size_px = pow(2, int(self.disp_size))
+        props: DisplacementBakerProperties = getattr(
+            context.scene, DisplacementBakerProperties.bl_idname
+        )
+        self.keep_original = props.keep_original
+        self.disp_size = pow(2, int(props.disp_size))
         return {"RUNNING_MODAL"}
 
     def execute(self, context: Context) -> set[str]:
@@ -115,8 +103,8 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         # Create bake image
         img: Image = bpy.data.images.new(
             self.DISP_BAKE_NAME,
-            self.disp_size_px,
-            self.disp_size_px,
+            self.disp_size,
+            self.disp_size,
             float_buffer=True,
             is_data=True,
         )

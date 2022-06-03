@@ -7,6 +7,8 @@ sys.path += [os.path.abspath(os.path.dirname(__file__))]
 
 from argparser import Argparser
 
+# TODO: sometimes module doesn't update?
+
 
 def get_build_path(output: str, arcname: str) -> str:
     """

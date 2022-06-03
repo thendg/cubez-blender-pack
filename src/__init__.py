@@ -1,10 +1,15 @@
 from typing import Callable, Type
-import bpy
 
-from bpy.types import Context, Menu
+import bpy
+from bpy.props import PointerProperty
+from bpy.types import Context, Menu, PropertyGroup, Scene
 
 from .bqdm_exporter import BQDMExporter
-from .displacement_baker import DisplacementBakerOperator, DisplacementBakerPanel
+from .displacement_baker import (
+    DisplacementBakerOperator,
+    DisplacementBakerPanel,
+    DisplacementBakerProperties,
+)
 from .utils.wrappers import Registerable
 
 # addon metadata
@@ -22,6 +27,7 @@ bl_info = {
 # operator subclasses to register
 CLASSES: list[Type[Registerable]] = [
     BQDMExporter,
+    DisplacementBakerProperties,
     DisplacementBakerOperator,
     DisplacementBakerPanel,
 ]
@@ -33,23 +39,27 @@ def register():
     "Register classes and append them to their associated menus."
 
     for cls in CLASSES:
-        print(f"[[CBP]] - Registered: {cls}")
         bpy.utils.register_class(cls)
+        if issubclass(cls, PropertyGroup):
+            setattr(Scene, cls.bl_idname, PointerProperty(type=cls))
         if cls.menu_target:
             menu_funcs[cls] = lambda caller, _context: caller.layout.operator(
                 cls.bl_idname, text=cls.bl_label
             )
             cls.menu_target.append(menu_funcs[cls])
+        print(f"[[CBP]] - Registered: {cls}")
 
 
 def unregister():
     "Unregister classes and remove them from their associated menus."
 
     for cls in CLASSES:
-        print(f"[[CBP]] - Unregistered: {cls}")
         bpy.utils.unregister_class(cls)
+        if issubclass(cls, PropertyGroup):
+            delattr(Scene, cls.bl_idname)
         if cls.menu_target:
             cls.menu_target.remove(menu_funcs[cls])
+        print(f"[[CBP]] - Unregistered: {cls}")
 
 
 if __name__ == "__main__":

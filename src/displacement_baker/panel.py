@@ -2,9 +2,14 @@ from bpy.types import Context, Panel
 
 from ..utils.wrappers import Registerable
 from .operator import DisplacementBakerOperator
+from .properties import DisplacementBakerProperties
 
 
 class DisplacementBakerPanel(Panel, Registerable):
+    """
+    Panel for running the Displacement Baker operator.
+    """
+
     bl_label = "Displacement Baker"
     bl_idname = "VIEW3D_PT_displacement_baker"
     bl_space_type = "VIEW_3D"
@@ -17,4 +22,8 @@ class DisplacementBakerPanel(Panel, Registerable):
             return True
 
     def draw(self, context: Context):
-        props = self.layout.operator(DisplacementBakerOperator.bl_idname)
+        props = getattr(context.scene, DisplacementBakerProperties.bl_idname)
+        for propname in DisplacementBakerProperties.get_props():
+            self.layout.prop(props, propname)
+
+        self.layout.operator(DisplacementBakerOperator.bl_idname)
