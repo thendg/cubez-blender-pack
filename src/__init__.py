@@ -21,10 +21,10 @@ bl_info = {
     "support": "COMMUNITY",
 }
 # operator subclasses to register
-CLASSES: list[Type[Registerable]] = [
+CLASSES: tuple[Type[Registerable]] = (
     *bqdm_exporter.get_classes(),
     *displacement_baker.get_classes(),
-]
+)
 # dictionary of operators to their draw functions
 menu_funcs: dict[Type[Registerable], Callable[[Menu, Context], None]] = {}
 

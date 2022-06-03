@@ -25,8 +25,6 @@ class CBPOperator(Operator):
 
         :param context: The context in which the operator was invoked.
         :param event: The window event created when the operator was invoked.
-
-        Returns `{"FINISHED"}` if the export completed successfully, {"CANCELLED"} otherwise.
         """
         return {"FINISHED"}
 

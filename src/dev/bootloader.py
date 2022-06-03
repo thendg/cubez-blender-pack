@@ -1,5 +1,7 @@
+import atexit
 import glob
 import os
+import shutil
 import sys
 from zipfile import ZipFile
 
@@ -63,20 +65,20 @@ def bundle(
 
 
 if __name__ == "__main__":
-    print("BOOTLOADING")
+    print("\nBOOTLOADING...")
 
     ################
     # Bundle addon #
     ################
 
     parser = Argparser(
-        opts=["include", "exclude", "src", "output", "arcname"],
+        opts=["include", "exclude", "src", "output", "name"],
         flags=["overwrite", "build"],
     )
     parser.parse(sys.argv)
     output = os.path.abspath(parser.get("output"))
-    arcname = parser.get("arcname")
-    build_path = get_build_path(output, arcname)
+    name = parser.get("name")
+    build_path = get_build_path(output, name)
 
     bundle(
         parser.get("include").split(","),
@@ -84,9 +86,9 @@ if __name__ == "__main__":
         overwrite=parser.getf("overwrite"),
         src=parser.get("src"),
         output=output,
-        arcname=arcname,
+        arcname=name,
     )
-    print(f'Bundle built to "{build_path}".')
+    print(f'Bundle built to "{build_path}".\n')
 
     if not parser.getf("build"):
         ######################################
@@ -94,17 +96,17 @@ if __name__ == "__main__":
         ######################################
 
         import bpy
-
-        # Calling addon_remove() attempts a GUI redraw, which breaks because it is being called
-        # from outside of an operator so we just catch the error that it raises
-        try:
-            # We have to use addon_remove() because calling addon_install(overwrite=True) doesn't
-            # delete old files from the addon, so we have to delete the whole addon and reinstall
-            bpy.ops.preferences.addon_remove(module=arcname)
-        except:
-            pass
+        import addon_utils
 
         bpy.ops.preferences.addon_install(filepath=build_path)
-        bpy.ops.preferences.addon_enable(module=arcname)
+        bpy.ops.preferences.addon_enable(module=name)
 
-        print("\n############ LOAD SUCCESSFUL ############")
+        modpath: str = None
+        for mod in addon_utils.modules():
+            if mod.__name__ == name:
+                modpath = mod.__file__
+                break
+
+        atexit.register(lambda path: shutil.rmtree(os.path.dirname(path)), modpath)
+
+        print("\n############ LOAD SUCCESSFUL ############\n")

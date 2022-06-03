@@ -20,7 +20,7 @@ if __name__ == "__main__":
         "src",
         "--output",
         "build",
-        "--arcname",
+        "--name",
         "cubez-blender-pack",
         "--overwrite",
     ]
