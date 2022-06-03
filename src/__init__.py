@@ -4,12 +4,8 @@ import bpy
 from bpy.props import PointerProperty
 from bpy.types import Context, Menu, PropertyGroup, Scene
 
-from .bqdm_exporter import BQDMExporter
-from .displacement_baker import (
-    DisplacementBakerOperator,
-    DisplacementBakerPanel,
-    DisplacementBakerProperties,
-)
+from . import bqdm_exporter
+from . import displacement_baker
 from .utils.wrappers import Registerable
 
 # addon metadata
@@ -26,10 +22,8 @@ bl_info = {
 }
 # operator subclasses to register
 CLASSES: list[Type[Registerable]] = [
-    BQDMExporter,
-    DisplacementBakerProperties,
-    DisplacementBakerOperator,
-    DisplacementBakerPanel,
+    *bqdm_exporter.get_classes(),
+    *displacement_baker.get_classes(),
 ]
 # dictionary of operators to their draw functions
 menu_funcs: dict[Type[Registerable], Callable[[Menu, Context], None]] = {}

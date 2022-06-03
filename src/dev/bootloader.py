@@ -7,8 +7,6 @@ sys.path += [os.path.abspath(os.path.dirname(__file__))]
 
 from argparser import Argparser
 
-# TODO: sometimes module doesn't update?
-
 
 def get_build_path(output: str, arcname: str) -> str:
     """
@@ -102,7 +100,6 @@ if __name__ == "__main__":
         try:
             # We have to use addon_remove() because calling addon_install(overwrite=True) doesn't
             # delete old files from the addon, so we have to delete the whole addon and reinstall
-            bpy.ops.preferences.addon_disable(module=arcname)
             bpy.ops.preferences.addon_remove(module=arcname)
         except:
             pass
