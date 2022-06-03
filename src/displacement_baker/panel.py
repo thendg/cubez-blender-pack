@@ -23,7 +23,8 @@ class DisplacementBakerPanel(Panel, Registerable):
 
     def draw(self, context: Context):
         props = getattr(context.scene, DisplacementBakerProperties.bl_idname)
+        col = self.layout.column()
         for propname in DisplacementBakerProperties.get_props():
-            self.layout.prop(props, propname)
+            col.prop(props, propname)
 
         self.layout.operator(DisplacementBakerOperator.bl_idname)
