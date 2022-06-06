@@ -176,6 +176,8 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         # Boolean value to represent a displace modifer has been applied
         applied = False
         if self.is_animated:
+            applied = True
+
             # Find the datablock containing this object's shape keys, if it doesn't exist can't be found, then the object has no shape keys
             # so we'll create the Basis shape key manually
             shape_key_container = blender_utils.find_shape_key_container(obj)
@@ -183,61 +185,56 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
                 obj.shape_key_add(name="Basis")
                 shape_key_container = blender_utils.find_shape_key_container(obj)
 
-            ###################################################################
-            # Bake and apply displacement maps for all frames in the timeline #
-            ###################################################################
-            with tempfile.NamedTemporaryFile() as img_file:
-                for frame in range(
-                    context.scene.frame_start, context.scene.frame_end + 1
+            # Bake and apply displacement maps for all frames in the timeline
+            for frame in range(context.scene.frame_start, context.scene.frame_end + 1):
+                # Bake displacement map for current frame
+                context.scene.frame_set(frame)
+                bpy.ops.object.bake(type="EMIT")
+
+                # Create and configure Displace modifier
+                disp: DisplaceModifier = obj.modifiers.new(
+                    f"Displace-{frame}", "DISPLACE"
+                )
+                setup_displace_modifier(
+                    disp, tex, mid_level=disp_midlevel, strength=disp_scale
+                )
+
+                # Apply modifier as Shape Key
+                bpy.ops.object.modifier_apply_as_shapekey(
+                    keep_modifier=False, modifier=disp.name
+                )
+
+                # Find the newly created shape key
+                shape_key: ShapeKey = None
+                for shape_key in cast(
+                    Iterable[ShapeKey], shape_key_container.key_blocks
                 ):
-                    # Bake displacement map for current frame
-                    context.scene.frame_set(frame)
-                    bpy.ops.object.bake(type="EMIT", save_mode="EXTERNAL")
-                    img.save_render(filepath=img_file.name)
+                    if shape_key.name == disp.name:
+                        break
 
-                    # Create and configure Displace modifier
-                    disp: DisplaceModifier = obj.modifiers.new("Displace", "DISPLACE")
-                    setup_displace_modifier(
-                        disp, tex, midlevel=disp_midlevel, strength=disp_scale
-                    )
+                if shape_key is None:
+                    self.error(f"Failed to shape key created for frame [{frame}]")
 
-                    # Apply modifier as Shape Key
-                    bpy.ops.object.modifier_apply_as_shapekey(
-                        keep_modifier=False, modifier=disp.name
-                    )
+                # "when keying data paths which contain nested properties this must be done from the `ID` subclass"
+                # - https://docs.blender.org/api/current/bpy.types.bpy_struct.html#bpy.types.bpy_struct.keyframe_insert
+                data_path = f'key_blocks["{shape_key.name}"].value'
 
-                    # Find the newly created shape key
-                    shape_key: ShapeKey = None
-                    for shape_key in cast(
-                        Iterable[ShapeKey], shape_key_container.key_blocks
-                    ):
-                        if shape_key.name == disp.name:
-                            break
-
-                    # "when keying data paths which contain nested properties this must be done from the `ID` subclass"
-                    # - https://docs.blender.org/api/current/bpy.types.bpy_struct.html#bpy.types.bpy_struct.keyframe_insert
-                    data_path = f'key_blocks["{shape_key.name}"].value'
-
-                    # Animate Shape Key
-                    shape_key.value = 0.0
-                    shape_key_container.keyframe_insert(
-                        data_path=data_path, frame=frame - 1
-                    )
-                    shape_key.value = 1.0
-                    shape_key_container.keyframe_insert(
-                        data_path=data_path, frame=frame
-                    )
-                    shape_key.value = 0.0
-                    shape_key_container.keyframe_insert(
-                        data_path=data_path, frame=frame + 1
-                    )
-
-            applied = True
+                # Animate Shape Key
+                shape_key.value = 0.0
+                shape_key_container.keyframe_insert(
+                    data_path=data_path, frame=frame - 1
+                )
+                shape_key.value = 1.0
+                shape_key_container.keyframe_insert(data_path=data_path, frame=frame)
+                shape_key.value = 0.0
+                shape_key_container.keyframe_insert(
+                    data_path=data_path, frame=frame + 1
+                )
         else:
             ###############################################################
             # Bake one map and create a displace modifier to read from it #
             ###############################################################
-            bpy.ops.object.bake(type="EMIT", save_mode="INTERNAL")
+            bpy.ops.object.bake(type="EMIT")
             disp: DisplaceModifier = obj.modifiers.new("Displace", "DISPLACE")
             setup_displace_modifier(
                 disp, tex, mid_level=disp_midlevel, strength=disp_scale
