@@ -58,7 +58,7 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
     @classmethod
     def poll(cls, context: Context):
         obj = context.view_layer.objects.active
-        return obj.mode == "OBJECT" and obj.type == "MESH"
+        return obj and obj.mode == "OBJECT" and obj.type == "MESH"
 
     def invoke(self, context: Context, event: Event) -> set[str]:
         mat_tree = context.view_layer.objects.active.active_material.node_tree

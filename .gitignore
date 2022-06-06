@@ -164,4 +164,3 @@ cython_debug/
 Pipfile.lock
 src/blender
 .env
-local_backup
