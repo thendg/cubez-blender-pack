@@ -15,6 +15,11 @@ class DisplacementBakerProperties(PropertyGroup, Registerable):
     keep_original: BoolProperty(
         name="Keep Original", description="Keep the original object.", default=True
     )
+    is_animated: BoolProperty(
+        name="Animated",
+        description="Should be selected only if the object has animated displacement. If the object is animated but the displacement is not, or object is completely static, this options should be left unchecked.",
+        default=False,
+    )
     disp_size: EnumProperty(
         name="Displacement Map Size",
         description="The size (in pixels) of intermediate displacement maps for prodedural displacement baking",

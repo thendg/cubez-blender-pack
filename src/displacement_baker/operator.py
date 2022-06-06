@@ -20,12 +20,30 @@ from ..utils import blender_utils, common_utils
 from .properties import DisplacementBakerProperties
 
 
+def setup_displace_modifier(mod: DisplaceModifier, tex: ImageTexture):
+    """
+    Setup a Displace modifier to read from a baked displacement map.
+
+    :param mod: The modifier to setup
+    :param tex: The texture to read from
+    """
+
+    mod.space = "LOCAL"
+    mod.texture_coords = "UV"
+    mod.direction = "RGB_TO_XYZ"
+    mod.texture = tex
+    mod.is_active = True
+
+
 class DisplacementBakerOperator(CBPOperator, Registerable):
     """Bake the procedural displacement of an object into animated shape keys."""
 
     bl_label = "Bake Procedural Displacement"
     bl_idname = "object.bake_procedural_displacement"
     DISP_BAKE_NAME = "DISP_BAKE"
+    keep_original: bool
+    is_animated: bool
+    disp_size: int
 
     @classmethod
     def poll(cls, context: Context):
@@ -44,15 +62,18 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
             )
             return {"CANCELLED"}
 
-        return self.execute(context)
-
-    def execute(self, context: Context) -> set[str]:
         # Read operator properties
         props: DisplacementBakerProperties = getattr(
             context.scene, DisplacementBakerProperties.bl_idname
         )
-        keep_original: bool = props.keep_original
-        disp_size: int = pow(2, int(props.disp_size))
+
+        self.keep_original = props.keep_original
+        self.is_animated = props.is_animated
+        self.disp_size = pow(2, int(props.disp_size))
+
+        return self.execute(context)
+
+    def execute(self, context: Context) -> set[str]:
 
         # Configure baking settings
         blender_utils.configure_cycles(context=context, samples=1, denoise=False)
@@ -63,7 +84,7 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         obj = context.view_layer.objects.active
 
         # Duplicate object if working non-destructively
-        if keep_original:
+        if self.keep_original:
             # TODO: rename duplicate with self.DISP_BAKE_NAME
             parent_collection = common_utils.search(
                 context.scene.collection,
@@ -120,11 +141,12 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         # Create bake image
         img: Image = bpy.data.images.new(
             self.DISP_BAKE_NAME,
-            disp_size,
-            disp_size,
+            self.disp_size,
+            self.disp_size,
             float_buffer=True,
             is_data=True,
         )
+        img.colorspace_settings.name = "Non-Color"
 
         # Create image texture
         tex: ImageTexture = bpy.data.textures.new(self.DISP_BAKE_NAME, type="IMAGE")
@@ -136,7 +158,6 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         img_node.select = True
         mat_tree.nodes.active = img_node
         img_node.image = img
-        # TODO: should it be non-color?
 
         # Find the datablock containing this object's shape keys, if it doesn't exist can't be found, then the object has no shape keys
         # so we'll create the Basis shape key manually
@@ -145,54 +166,60 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
             obj.shape_key_add(name="Basis")
             shape_key_container = blender_utils.find_shape_key_container(obj)
 
-        ###################################################################
-        # Bake and apply displacement maps for all frames in the timeline #
-        ###################################################################
-
-        with tempfile.NamedTemporaryFile() as img_file:
-            print(img_file.name)  # TODO: remove
-            for frame in range(context.scene.frame_start, context.scene.frame_end + 1):
-                # Bake displacement map for current frame
-                context.scene.frame_set(frame)
-                bpy.ops.object.bake(type="EMIT", save_mode="EXTERNAL")
-                img.save_render(filepath=img_file.name)
-
-                # Create and configure Displace modifier
-                disp: DisplaceModifier = obj.modifiers.new("Displace", "DISPLACE")
-                disp.space = "LOCAL"
-                disp.texture_coords = "UV"
-                disp.direction = "RGB_TO_XYZ"
-                disp.texture = tex
-                disp.is_active = True
-
-                # Apply modifier as Shape Key
-                bpy.ops.object.modifier_apply_as_shapekey(
-                    keep_modifier=False, modifier=disp.name
-                )
-
-                # Find the newly created shape key
-                shape_key: ShapeKey = None
-                for shape_key in cast(
-                    Iterable[ShapeKey], shape_key_container.key_blocks
+        if self.is_animated:
+            ###################################################################
+            # Bake and apply displacement maps for all frames in the timeline #
+            ###################################################################
+            with tempfile.NamedTemporaryFile() as img_file:
+                for frame in range(
+                    context.scene.frame_start, context.scene.frame_end + 1
                 ):
-                    if shape_key.name == disp.name:
-                        break
+                    # Bake displacement map for current frame
+                    context.scene.frame_set(frame)
+                    bpy.ops.object.bake(type="EMIT", save_mode="EXTERNAL")
+                    img.save_render(filepath=img_file.name)
 
-                # "when keying data paths which contain nested properties this must be done from the `ID` subclass"
-                # - https://docs.blender.org/api/current/bpy.types.bpy_struct.html#bpy.types.bpy_struct.keyframe_insert
-                data_path = f'key_blocks["{shape_key.name}"].value'
+                    # Create and configure Displace modifier
+                    disp: DisplaceModifier = obj.modifiers.new("Displace", "DISPLACE")
+                    setup_displace_modifier(disp, tex)
 
-                # Animate Shape Key
-                shape_key.value = 0.0
-                shape_key_container.keyframe_insert(
-                    data_path=data_path, frame=frame - 1
-                )
-                shape_key.value = 1.0
-                shape_key_container.keyframe_insert(data_path=data_path, frame=frame)
-                shape_key.value = 0.0
-                shape_key_container.keyframe_insert(
-                    data_path=data_path, frame=frame + 1
-                )
+                    # Apply modifier as Shape Key
+                    bpy.ops.object.modifier_apply_as_shapekey(
+                        keep_modifier=False, modifier=disp.name
+                    )
+
+                    # Find the newly created shape key
+                    shape_key: ShapeKey = None
+                    for shape_key in cast(
+                        Iterable[ShapeKey], shape_key_container.key_blocks
+                    ):
+                        if shape_key.name == disp.name:
+                            break
+
+                    # "when keying data paths which contain nested properties this must be done from the `ID` subclass"
+                    # - https://docs.blender.org/api/current/bpy.types.bpy_struct.html#bpy.types.bpy_struct.keyframe_insert
+                    data_path = f'key_blocks["{shape_key.name}"].value'
+
+                    # Animate Shape Key
+                    shape_key.value = 0.0
+                    shape_key_container.keyframe_insert(
+                        data_path=data_path, frame=frame - 1
+                    )
+                    shape_key.value = 1.0
+                    shape_key_container.keyframe_insert(
+                        data_path=data_path, frame=frame
+                    )
+                    shape_key.value = 0.0
+                    shape_key_container.keyframe_insert(
+                        data_path=data_path, frame=frame + 1
+                    )
+        else:
+            ###############################################################
+            # Bake one map and create a displace modifier to read from it #
+            ###############################################################
+            bpy.ops.object.bake(type="EMIT", save_mode="INTERNAL")
+            disp: DisplaceModifier = obj.modifiers.new("Displace", "DISPLACE")
+            setup_displace_modifier(disp, tex)
 
         # Remove extra material nodes
         mat_tree.nodes.remove(emission)
