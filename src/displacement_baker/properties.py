@@ -35,4 +35,4 @@ class DisplacementBakerProperties(PropertyGroup, Registerable):
 
     @staticmethod
     def get_props() -> tuple[str]:
-        return "keep_original", "disp_size"
+        return "keep_original", "is_animated", "disp_size"

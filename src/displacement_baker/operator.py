@@ -10,6 +10,7 @@ from bpy.types import (
     ImageTexture,
     MaterialSlot,
     Node,
+    NodeSocketFloat,
     Object,
     ShaderNodeTexImage,
     ShapeKey,
@@ -20,17 +21,26 @@ from ..utils import blender_utils, common_utils
 from .properties import DisplacementBakerProperties
 
 
-def setup_displace_modifier(mod: DisplaceModifier, tex: ImageTexture):
+def setup_displace_modifier(
+    mod: DisplaceModifier,
+    tex: ImageTexture,
+    mid_level: float = 0.5,
+    strength: float = 1,
+):
     """
     Setup a Displace modifier to read from a baked displacement map.
 
     :param mod: The modifier to setup
     :param tex: The texture to read from
+    :param mid_level: The Midlevel value to apply to the modifier
+    :param strength: The Strength value to apply to the modifier
     """
 
     mod.space = "LOCAL"
     mod.texture_coords = "UV"
     mod.direction = "RGB_TO_XYZ"
+    mod.mid_level = mid_level
+    mod.strength = strength
     mod.texture = tex
     mod.is_active = True
 
@@ -112,16 +122,20 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
 
         # Get the socket providing the surface input for the material output
         surface_socket = blender_utils.get_link(output_node, "Surface").from_socket
-        # Get the node providing the displacement input for the material output
+        # Get the displacement node providing the displacement input for the material output
         displacement_link = blender_utils.get_link(output_node, "Displacement")
-        # Get the socket providing the displacement input for the material output
-        displacement_socket = displacement_link.from_socket
-        # If the displacement source node is a displacement node, backtrack to the Height input for the displacement source
-        # because displacement output is not going to give us the right output for baking a displacement map (we need a greyscale image).
-        if displacement_link.from_node.type == "DISPLACEMENT":
-            displacement_socket = blender_utils.get_link(
-                displacement_link.from_node, "Height"
-            ).from_socket
+        displacement_node = displacement_link.from_node
+        # Displacement output is not going to give us the right output for baking a displacement map (we need a greyscale image) so
+        # we'll get the height source.
+        height_socket = blender_utils.get_link(displacement_node, "Height").from_socket
+
+        # Get scale and midlevel from displacement node
+        disp_scale = cast(
+            NodeSocketFloat, displacement_node.inputs["Scale"]
+        ).default_value
+        disp_midlevel = cast(
+            NodeSocketFloat, displacement_node.inputs["Midlevel"]
+        ).default_value
 
         ###############################
         # Prepare material for baking #
@@ -130,7 +144,7 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         # Create emission shader node
         emission: Node = mat_tree.nodes.new("ShaderNodeEmission")
         # Connect displacment source to the emission shader's color input
-        mat_tree.links.new(displacement_socket, emission.inputs["Color"])
+        mat_tree.links.new(height_socket, emission.inputs["Color"])
         # Connect emission shader's output to material output's surface input socket
         mat_tree.links.new(emission.outputs["Emission"], output_node.inputs["Surface"])
 
@@ -159,14 +173,16 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         mat_tree.nodes.active = img_node
         img_node.image = img
 
-        # Find the datablock containing this object's shape keys, if it doesn't exist can't be found, then the object has no shape keys
-        # so we'll create the Basis shape key manually
-        shape_key_container = blender_utils.find_shape_key_container(obj)
-        if not shape_key_container:
-            obj.shape_key_add(name="Basis")
-            shape_key_container = blender_utils.find_shape_key_container(obj)
-
+        # Boolean value to represent a displace modifer has been applied
+        applied = False
         if self.is_animated:
+            # Find the datablock containing this object's shape keys, if it doesn't exist can't be found, then the object has no shape keys
+            # so we'll create the Basis shape key manually
+            shape_key_container = blender_utils.find_shape_key_container(obj)
+            if not shape_key_container:
+                obj.shape_key_add(name="Basis")
+                shape_key_container = blender_utils.find_shape_key_container(obj)
+
             ###################################################################
             # Bake and apply displacement maps for all frames in the timeline #
             ###################################################################
@@ -181,7 +197,9 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
 
                     # Create and configure Displace modifier
                     disp: DisplaceModifier = obj.modifiers.new("Displace", "DISPLACE")
-                    setup_displace_modifier(disp, tex)
+                    setup_displace_modifier(
+                        disp, tex, midlevel=disp_midlevel, strength=disp_scale
+                    )
 
                     # Apply modifier as Shape Key
                     bpy.ops.object.modifier_apply_as_shapekey(
@@ -213,22 +231,29 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
                     shape_key_container.keyframe_insert(
                         data_path=data_path, frame=frame + 1
                     )
+
+            applied = True
         else:
             ###############################################################
             # Bake one map and create a displace modifier to read from it #
             ###############################################################
             bpy.ops.object.bake(type="EMIT", save_mode="INTERNAL")
             disp: DisplaceModifier = obj.modifiers.new("Displace", "DISPLACE")
-            setup_displace_modifier(disp, tex)
+            setup_displace_modifier(
+                disp, tex, mid_level=disp_midlevel, strength=disp_scale
+            )
 
         # Remove extra material nodes
         mat_tree.nodes.remove(emission)
         mat_tree.nodes.remove(img_node)
         # Put the original surface shader back as the surface input for the material output
         mat_tree.links.new(surface_socket, output_node.inputs["Surface"])
+        # Unlink procedural displacement
+        mat_tree.links.remove(displacement_link)
 
-        # Delete dispalcement map image/texture blend data (the saved render will get cleaned up later)
-        bpy.data.images.remove(img)
-        bpy.data.textures.remove(tex)
+        if applied:
+            # Delete dispalcement map image/texture blend data (the saved render will get cleaned up later)
+            bpy.data.images.remove(img)
+            bpy.data.textures.remove(tex)
 
         return {"FINISHED"}
