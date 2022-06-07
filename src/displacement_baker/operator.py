@@ -81,10 +81,12 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
         self.is_animated = props.is_animated
         self.disp_size = pow(2, int(props.disp_size))
 
-        return self.execute(context)
+        try:
+            return self.execute(context)
+        except RuntimeError as e:
+            return self.error(e)
 
     def execute(self, context: Context) -> set[str]:
-
         # Configure baking settings
         blender_utils.configure_cycles(context=context, samples=1, denoise=False)
         context.scene.render.image_settings.file_format = "OPEN_EXR"
@@ -108,10 +110,15 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
                     mat_slot.name
                 ].material = mat_slot.material.copy()
             obj.hide_set(True)
+            obj.hide_render = True
             parent_collection.objects.link(obj_dup)
             context.view_layer.objects.active = obj_dup
-            obj_dup.select_set(True)
             obj = obj_dup
+
+        # Enable object
+        obj.select_set(True)
+        obj.hide_set(False)
+        obj.hide_render = False
 
         #############################################
         # Inspect active material of current object #
@@ -192,9 +199,9 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
                 bpy.ops.object.bake(type="EMIT")
 
                 # Create and configure Displace modifier
-                disp: DisplaceModifier = obj.modifiers.new(
-                    f"Displace-{frame}", "DISPLACE"
-                )
+                # Store the name for later comparison instead of using DisplaceModifier.name to avoid https://blender.stackexchange.com/questions/192995/utf-8-codec-cant-decode-strings-randomly
+                name = f"Displace-{frame}"
+                disp: DisplaceModifier = obj.modifiers.new(name, "DISPLACE")
                 setup_displace_modifier(
                     disp, tex, mid_level=disp_midlevel, strength=disp_scale
                 )
@@ -209,7 +216,7 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
                 for shape_key in cast(
                     Iterable[ShapeKey], shape_key_container.key_blocks
                 ):
-                    if shape_key.name == disp.name:
+                    if shape_key.name == name:
                         break
 
                 if shape_key is None:

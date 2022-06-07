@@ -41,9 +41,7 @@ class BQDMExporter(CBPOperator, Registerable):
         return os.path.join(self.path, *paths)
 
     def invoke(self, context: Context, _event: Event) -> set[str]:
-        #################
-        # Set self.path #
-        #################
+        # Set self.path
         blend_filepath = context.blend_data.filepath
         if not blend_filepath:
             blend_filepath = "untitled"
@@ -51,9 +49,7 @@ class BQDMExporter(CBPOperator, Registerable):
             blend_filepath = os.path.splitext(blend_filepath)[0]
         self.path = blend_filepath
 
-        ##################################
-        # Validate the target collection #
-        ##################################
+        # Validate the target collection
         for obj in cast(
             Iterable[Object],
             bpy.data.collections.get(self.target_coll_name).all_objects,
@@ -125,9 +121,10 @@ class BQDMExporter(CBPOperator, Registerable):
         # Configure baking settings
         blender_utils.configure_cycles(context=context, mode="HYBRID")
         context.scene.render.image_settings.file_format = "JPEG"
-        context.scene.render.image_settings.color_depth = 32
+        context.scene.render.image_settings.color_depth = "32"
 
         for obj in cast(Iterable[Object], collection.all_objects):
+            # TODO: srgb color space
             pass
 
         # Delete temporary working directory

@@ -3,6 +3,9 @@
 ## Notes
 - To bake static emission particle systems and all hair particle systems, we:
   - Use convert to mesh from modifer
+    - When converting particles, viewport settings are used - not render. To get render level conversions, viewport settings will need to match render settings.
+      - https://blender.stackexchange.com/questions/21623/how-can-you-change-the-curve-resolution-of-hair-particles
+      - Children
   - Apply material
   - For hair:
     - Merge verts b distance
