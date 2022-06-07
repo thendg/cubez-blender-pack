@@ -4,7 +4,7 @@ import bpy
 from bpy.props import PointerProperty
 from bpy.types import Context, Menu, PropertyGroup, Scene
 
-from . import bqdm_exporter
+from . import material_marshall
 from . import displacement_baker
 from .utils.wrappers import Registerable
 
@@ -22,7 +22,7 @@ bl_info = {
 }
 # operator subclasses to register
 CLASSES: tuple[Type[Registerable]] = (
-    *bqdm_exporter.get_classes(),
+    *material_marshall.get_classes(),
     *displacement_baker.get_classes(),
 )
 # dictionary of operators to their draw functions
