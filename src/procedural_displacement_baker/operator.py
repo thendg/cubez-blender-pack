@@ -18,7 +18,7 @@ from bpy.types import (
 
 from ..utils.wrappers import CBPOperator, Registerable
 from ..utils import blender_utils, common_utils
-from .properties import DisplacementBakerProperties
+from .properties import PDBProperties
 
 
 def setup_displace_modifier(
@@ -45,7 +45,7 @@ def setup_displace_modifier(
     mod.is_active = True
 
 
-class DisplacementBakerOperator(CBPOperator, Registerable):
+class PDBOperator(CBPOperator, Registerable):
     """Bake the procedural displacement of an object into animated shape keys."""
 
     bl_label = "Bake Procedural Displacement"
@@ -73,9 +73,7 @@ class DisplacementBakerOperator(CBPOperator, Registerable):
             return {"CANCELLED"}
 
         # Read operator properties
-        props: DisplacementBakerProperties = getattr(
-            context.scene, DisplacementBakerProperties.bl_idname
-        )
+        props: PDBProperties = getattr(context.scene, PDBProperties.bl_idname)
 
         self.keep_original = props.keep_original
         self.is_animated = props.is_animated

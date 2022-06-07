@@ -4,7 +4,7 @@ from bpy.types import PropertyGroup
 from ..utils.wrappers.registerable import Registerable
 
 
-class DisplacementBakerProperties(PropertyGroup, Registerable):
+class PDBProperties(PropertyGroup, Registerable):
     """
     A class holding the properties used by the Displacement Baker operator.
     """

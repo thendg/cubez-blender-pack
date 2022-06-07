@@ -5,7 +5,7 @@ from bpy.props import PointerProperty
 from bpy.types import Context, Menu, PropertyGroup, Scene
 
 from . import material_marshall
-from . import displacement_baker
+from . import procedural_displacement_baker
 from .utils.wrappers import Registerable
 
 # addon metadata
@@ -23,7 +23,7 @@ bl_info = {
 # operator subclasses to register
 CLASSES: tuple[Type[Registerable]] = (
     *material_marshall.get_classes(),
-    *displacement_baker.get_classes(),
+    *procedural_displacement_baker.get_classes(),
 )
 # dictionary of operators to their draw functions
 menu_funcs: dict[Type[Registerable], Callable[[Menu, Context], None]] = {}
