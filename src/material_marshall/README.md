@@ -1,31 +1,29 @@
 # Material Marshall
 An addon to prepare materials for glTF export. Materials can be marshalled into the following structures in preparation for glTF export:
-- Metallic/Roughness PBR
-- Shadless Diffuse Map
+- Metallic/Roughness PBR Materials
+- Shadless Diffuse Materials
 
-- user can bake the *entire* material into a single diffuse texture, which will be exposed to gltf as a shadless texture.
-  - minimal processing and storage at runtime
-  - diffuse texture should go into a background node so they will be interpreted as "unlit" (shadeless)
-  - diffuse texture should get post processed but PBR textures should not
+The Metallic/Roughness PBR Materials are Physically Based Rendering materials utilising the Metallic/Roughness workflow (as opposed to the Specular/Glossiness workflow). These are realtime materials which calculate the interaction and appearance of a mesh surface in it's surrounding environment at runtime. Shadless Diffuse Materials are fully baked static textures, applied to a mesh surface describing the final appearance of an object. In comparison, Metallic/Roughness PBR Materials describe *how* an object should look (declarative) while Shadless Diffuse Materials describe *what* an object looks like (imperative).
+
+Since Shadless Diffuse Materials are imperative descriptions of appearance, they are much cheaper to compute since they don't require any runtime calculation. Because of this, it is recommended to use Shadeless diffuse maps *whereever possible*. This minimises the sizes of your materials, optimising storage and makes the model easier to compute for clients, improving overall perfomance. For static scenes this works perfectly, however, it doesn't work as well when we start to introduce moving elements. Animated scenes contain moving objects. If aon object moves, any surface refractions, casted shadows or received shadows relative to the object should change. For Shadless Diffuse Materials, this would not be the case since everything is precalculated and baked into a single texture, so in this situation a Metallic/Roughness PBR Material would be required since there are elements of the scene which would need to be calculated at runtime.
+> *NOTE: This doesn't mean that the **entire** scene must use Metallic/Roughness PBR Materials, only the elements which are affected by animation.*
+
+Other reasons that can influence you choice of material structure include:
+- **Lighting:** Lighting is often calculated much more accruately by ray-traced rendering engines than realtime engines so if you prefer the way your lighting looks you may want to prebake your lighting using a Shadless Diffuse Material. This goes for lighting *effects* too, for example if your material change appearance depending on the camera's angle to the surface.
+- **Sylistic Choices:** With certain art styles (like "hand drawn" or "cartoon" styles), it may be undesirable to describe your material declaratively - leaving the runtime engine to do the calculations on how it should look. If a certain material needs to look a specific way, a Shadless Diffuse Material is the way to go.
+- **Material Properties:** There are some types of material, like transmissive materials for example, which **must** be calculated at runtime, in which case there is no option other than a Metallic/Roughness PBR Material. This is due to contraints on the capabilities of ray-traced rendering engines. For the given example, the results of tranmission cannot be baked into a texture since the appearance of a tranmissive texture requires the runtime capabilities of the ray-traced engines to render. This is why attempting to bake tranmissive materials always yeilds strange results. The same goes for other material aspects like transparency, translucency, reflection and refraction of glass-like materials, with some aspects looking better/worse when baked than others.
 
 ## Usage Notes
 - Make sure all your textures use their objects' UV coordinate maps. When textures are baked, the resulting baked images will be applied to objects by their UV, so creating your textures around their UV maps ensures the most consistent and predictable results.
   > *NOTE: These UV maps should be finalised. Any modifiers that introduce geometry should already be applied, since they will affect the UV map. Ideally, you should apply these modifiers before UV unwrapping your objects.*
 
-## Model
-Use `.glb`
-Use Draco compression
+# Notes
+pbr structure:
+- ORM map
+- Normal map (tangent space)
+- emission
+- backface culling
+- blend mode
+  - (alpha clip recommended but then you can't have gradient alpha)
 
-## Notes
-- Materials should be post-processed
-- Texture sizes are 256px, 512px, 1024px, 2048px, 4096px, 8192px squares. Using the bounding box of each object, we determine the minumum sized texture it will have. We then bake textures at this texture, and the next three sizes above it, to create low, standard and high resolutions appropriate for each object.
-- we cant export `.ktx2` directly out of blender, so we'll have to export something else, then convert that into `.ktx2`. The format we export out of blender should be whatever produces the best looking and smallest result after `.ktx2` compression
-  - https://github.khronos.org/KTX-Software/ktxtools/toktx.html
-  - https://github.com/BinomialLLC/basis_universal
-    - This has automatic Zstandard compression compression for `.ktx2`
-  - we should create textures with mipmaps. even though this will make the files bigger, THREE will generate mipmaps anyway so the GPU will still end up storing them. considering this, we might aswell generate them in advance to improve runtime load speed.
-- the only reason we're not using video texture instead of texture sets is because with images we can compress each one as `.ktx2` but we cant do that with video? If we can find a good GPU video compression format then this is the better way to go. The base state texture will still be a `.ktx2`. If runtime image swapping is slow, we'll be forced to swap to compressed MP4 video textures
-- How do we support cameras?
-  - Like sketchfab does
-- How will we add support for 2D digital art?
-- https://www.khronos.org/blog/using-the-new-gltf-extensions-volume-index-of-refraction-and-specular
+both should use UV map tex coords and mapping node
