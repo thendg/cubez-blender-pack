@@ -1,5 +1,6 @@
 from bpy.types import Context, Panel
 
+import utils
 from ..utils.wrappers import Registerable
 from .operator import PDBOperator
 from .properties import PDBProperties
@@ -14,7 +15,7 @@ class PDBPanel(Panel, Registerable):
     bl_idname = "VIEW3D_PT_displacement_baker"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_category = "CBP"
+    bl_category = utils.PANEL_CATEGORY
 
     def draw(self, context: Context):
         props = getattr(context.scene, PDBProperties.bl_idname)

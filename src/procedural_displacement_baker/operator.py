@@ -1,4 +1,3 @@
-import tempfile
 from typing import Iterable, cast
 
 import bpy
