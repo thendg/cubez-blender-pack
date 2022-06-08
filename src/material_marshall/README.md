@@ -16,14 +16,17 @@ Other reasons that can influence you choice of material structure include:
 ## Usage Notes
 - Make sure all your textures use their objects' UV coordinate maps. When textures are baked, the resulting baked images will be applied to objects by their UV, so creating your textures around their UV maps ensures the most consistent and predictable results.
   > *NOTE: These UV maps should be finalised. Any modifiers that introduce geometry should already be applied, since they will affect the UV map. Ideally, you should apply these modifiers before UV unwrapping your objects.*
+- Transparency is used to represent parts of a mesh which aren't visible, for example the holes in a fishing net. Transparency **should not** be used for gradurally blending/fading out materials but instead as a binary property defining if a part of a mesh is or is not visible. As such, all marshalled materials use the "Alpha Clip" blend mode. To achieve gradual fades in visibility, utilise a material's tranmissive properties.
 
 # Notes
-pbr structure:
-- ORM map
-- Normal map (tangent space)
-- emission
-- backface culling
-- blend mode
-  - (alpha clip recommended but then you can't have gradient alpha)
+- pbr structure:
+  - ORM map
+  - Normal map (tangent space)
+  - emission
+  - backface culling
+  - blend mode: alpha clip. transparenc
+    - (alpha clip recommended but then you can't have gradient alpha)
 
-both should use UV map tex coords and mapping node
+
+- both mat types should use UV map tex coords and mapping node
+- base color should be sRGB, everything else shoudl be non-color
