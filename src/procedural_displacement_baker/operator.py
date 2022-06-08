@@ -17,7 +17,7 @@ from bpy.types import (
 )
 
 from ..utils.wrappers import CBPOperator, Registerable
-from ..utils import blender_utils, common_utils
+from ..utils import blender_utils, render_utils, common_utils
 from .properties import PDBProperties
 
 
@@ -86,7 +86,8 @@ class PDBOperator(CBPOperator, Registerable):
 
     def execute(self, context: Context) -> set[str]:
         # Configure baking settings
-        blender_utils.configure_cycles(context=context, samples=1, denoise=False)
+        reset_cb = render_utils.get_config_resetter(context)
+        render_utils.configure_cycles(context=context, samples=1, denoise=False)
         context.scene.render.image_settings.file_format = "OPEN_EXR"
         context.scene.render.image_settings.color_depth = "32"
 
@@ -244,6 +245,9 @@ class PDBOperator(CBPOperator, Registerable):
             setup_displace_modifier(
                 disp, tex, mid_level=disp_midlevel, strength=disp_scale
             )
+
+        # Reset render engine settings
+        reset_cb(context)
 
         # Remove extra material nodes
         mat_tree.nodes.remove(emission)
