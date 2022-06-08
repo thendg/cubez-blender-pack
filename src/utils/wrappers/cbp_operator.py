@@ -17,6 +17,17 @@ class CBPOperator(Operator):
         self.report({"ERROR"}, message)
         return {"CANCELLED"}
 
+    def cancel(self, message="Operation cancelled.") -> set[str]:
+        """
+        Report a warning to Blender explaining why an operation was cancelled.
+        Returns `{"CANCELLED"}`, so the return value of this function can be returned out of the operator.
+
+        :param message: The warning message to report.
+        """
+
+        self.report({"WARNING"}, message)
+        return {"CANCELLED"}
+
     def invoke(self, context: Context, event: Event) -> set[str]:
         """
         Invoke the operator. This method is called before `execute()`, so can be used to setup initialise the operator by setting up

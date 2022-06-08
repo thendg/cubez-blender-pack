@@ -59,21 +59,28 @@ class PDBOperator(CBPOperator, Registerable):
         obj = context.view_layer.objects.active
         return obj and obj.mode == "OBJECT" and obj.type == "MESH"
 
-    def invoke(self, context: Context, event: Event) -> set[str]:
-        mat_tree = context.view_layer.objects.active.active_material.node_tree
+    def invoke(self, context: Context, _event: Event) -> set[str]:
+        # Get active object
+        obj = context.view_layer.objects.active
+
+        # Check that object can be worked with
+        try:
+            blender_utils.check_obj(obj)
+        except RuntimeError as e:
+            return self.cancel(e)
+
+        # Get object's material for analysis
+        mat_tree = obj.active_material.node_tree
         output_node = blender_utils.get_node_of_type(mat_tree, "OUTPUT_MATERIAL")
 
         # If there is no displacement source, there's no displacement so we don't have anything to bake
         if not blender_utils.get_link(output_node, "Displacement"):
-            self.report(
-                {"WARNING"},
-                "Operation cancelled because active object has no displacement source in active material.",
+            return self.cancel(
+                "Operation cancelled because active object has no displacement source in active material."
             )
-            return {"CANCELLED"}
 
         # Read operator properties
         props: PDBProperties = getattr(context.scene, PDBProperties.bl_idname)
-
         self.keep_original = props.keep_original
         self.is_animated = props.is_animated
         self.disp_size = pow(2, int(props.disp_size))

@@ -1,7 +1,7 @@
 from typing import Iterable, Optional, cast
 
 import bpy
-from bpy.types import Collection, Key, Node, NodeLink, NodeTree, Object
+from bpy.types import Collection, Key, Mesh, Node, NodeLink, NodeTree, Object
 from . import common_utils
 
 
@@ -71,3 +71,40 @@ def find_shape_key_container(obj: Object) -> Optional[Key]:
         if shape_key_container.user == obj.data:
             return shape_key_container
     return None
+
+
+def check_obj(obj: Object):
+    """
+    Check that an objet has the correct prerequisites for material processing, report an error otherwise. The objext is considered invalid if:
+    - It has no UV map
+    - It has no active material
+    - The active material of the object has no "Material Output" node
+    - The active material of the object has an empty "Surface" input for it's "Material Output" node
+
+    :param obj: The object to check.
+    :raises RuntimeError: if the object is invalid.
+    """
+
+    # Check UV Map
+    mesh: Mesh = obj.data
+    if not mesh.uv_layers:
+        raise RuntimeError(f'Mesh "{mesh.name}" has no UV map.')
+
+    # Check active material
+    if not obj.active_material:
+        raise RuntimeError(f'Object "{obj.name}" has no active material.')
+
+    mat_tree = obj.active_material.node_tree
+    output_node = get_node_of_type(mat_tree, "OUTPUT_MATERIAL")
+
+    # Check Material Output node
+    if not output_node:
+        raise RuntimeError(
+            f'Active material of the object "{obj.name}" has no Material Output node.'
+        )
+
+    # Check Surface input for Material Output node
+    if not get_link(output_node, "Surface").from_socket:
+        raise RuntimeError(
+            f'Active material of the object "{obj.name}" has no surface input.'
+        )

@@ -57,29 +57,10 @@ class BQDMExporter(CBPOperator, Registerable):
             if not obj.type == "MESH":
                 continue
 
-            # Check UV Map
-            mesh: Mesh = obj.data
-            if not mesh.uv_layers:
-                return self.error(f'Mesh "{mesh.name}" has no UV map.')
-
-            # Check active material
-            if not obj.active_material:
-                return self.error(f'Object "{obj.name}" has no active material.')
-
-            mat_tree = obj.active_material.node_tree
-            output_node = blender_utils.get_node_of_type(mat_tree, "OUTPUT_MATERIAL")
-
-            # Check Material Output node
-            if not output_node:
-                return self.error(
-                    f'Active material of the object "{obj.name}" has no Material Output node.'
-                )
-
-            # Check Surface input for Material Output node
-            if not blender_utils.get_link(output_node, "Surface").from_socket:
-                return self.error(
-                    f'Active material of the object "{obj.name}" has no surface input.'
-                )
+            try:
+                blender_utils.check_obj(obj)
+            except RuntimeError as e:
+                return self.cancel(e)
 
         context.window_manager.fileselect_add(self)
         return {"RUNNING_MODAL"}
