@@ -19,14 +19,17 @@ Other reasons that can influence you choice of material structure include:
 - Transparency is used to represent parts of a mesh which aren't visible, for example the holes in a fishing net. Transparency **should not** be used for gradurally blending/fading out materials but instead as a binary property defining if a part of a mesh is or is not visible. As such, all marshalled materials use the "Alpha Clip" blend mode. To achieve gradual fades in visibility, utilise a material's tranmissive properties.
 
 # Notes
+- if we're gonna do the multiple size export, we need to know how to store the textures now because this is the point when they get baked so we need to know how to bake them (size wise).
+  - If we use [KHR_materials_variants](https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_materials_variants) extension, we can store the different textures as "variants"
 - pbr structure:
   - ORM map
   - Normal map (tangent space)
   - emission
   - backface culling
-  - blend mode: alpha clip. transparenc
+  - blend mode: alpha clip.
     - (alpha clip recommended but then you can't have gradient alpha)
-
-
-- both mat types should use UV map tex coords and mapping node
 - base color should be sRGB, everything else shoudl be non-color
+- both mat types will use UV map. We won't support UV transforms because of the complications:
+  > *"UV transforms are supported, with several key limitations. Transforms applied to a texture using the first UV slot (that is, any texture except the ambient occlusion map and light map) must share the same transform, or no transform at all. The ambient occlusion map and light map textures cannot be transformed. No more than one transform may be used per material."*
+  >
+  > *From [threejs.org](https://threejs.org/docs/?q=gltf#examples/en/loaders/GLTFLoader).*
